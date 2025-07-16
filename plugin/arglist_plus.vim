@@ -17,6 +17,10 @@ let g:arglist_plus#win_copy_local = 1
 
 " helpers {{{
 
+function s:cbang(command, bang)
+  return a:command.(a:bang ? "!" : "")
+endfunction
+
 " }}}
 
 " information {{{
@@ -26,14 +30,14 @@ function arglist_plus#ArgList()
   return execute("args")
 endfunction
 
-function arglist_plus#ArgListV()
-  " return list representation with each argument on separate line
-  " TODO
+function arglist_plus#ArgVList()
+  " TODO return list representation with each argument on separate line
+  return ""
 endfunction
 
-function arglist_plus#ArgListH()
-  " return list representation that takes only one line
-  " TODO
+function arglist_plus#ArgHList()
+  " TODO return list representation that takes only one line
+  return ""
 endfunction
 
 " }}}
@@ -41,27 +45,46 @@ endfunction
 " navigation {{{
 
 function arglist_plus#ArgNext(bang, n)
-  " TODO
+  let l:n = (argidx() + a:n) % argc()
+  exe s:cbang("argument", a:bang)." ".(l:n + 1)
 endfunction
 
 function arglist_plus#ArgPrev(bang, n)
-  " TODO
+  let l:n = (argc() + argidx() - a:n % argc()) % argc()
+  exe s:cbang("argument", a:bang)." ".(l:n + 1)
 endfunction
 
 function arglist_plus#ArgSel(bang, n)
-  " TODO
+  if a:n == 0
+    argument
+  endif
+  exe s:cbang("argument", a:bang)." ".a:n
 endfunction
 
-function arglist_plus#ArgGo(bang, name)
-  " TODO
+function arglist_plus#ArgGo(bang, name="")
+  if a:name == ""
+    argument
+  else
+    let l:idx = index(argv(), a:name)
+    if l:idx == -1
+      exe s:cbang("argedit", a:bang)." ".a:name
+    else
+      exe s:cbang("argument", a:bang)." ".(l:idx + 1)
+    endif
+  endif
 endfunction
 
 " }}}
 
 " operations on list elements {{{
 
-function arglist_plus#ArgAdd(bang, ...)
-  " adds argument to list
+function arglist_plus#ArgAdd(...)
+  " adds arguments to list
+  " TODO
+endfunction
+
+function arglist_plus#ArgEdit(bang, ...)
+  " adds arguments to list and edits first added
   " TODO
 endfunction
 
@@ -105,20 +128,35 @@ endfunction
 
 " commands {{{
 
-command! -count=1 -bang ArgSel call arglist_plus#ArgSel(<bang>0, <count>)
-command! -nargs=1 -bang ArgGo call arglist_plus#ArgGo(<bang>0, <f-args>)
-command! -count=1 -bang ArgNext call arglist_plus#ArgNext(<bang>0, <count>)
-command! -count=1 -bang ArgPrev call arglist_plus#ArgPrev(<bang>0, <count>)
+command! -count=1 -bang ArgNext
+      \ call arglist_plus#ArgNext(<bang>0, <count>)
+command! -count=1 -bang ArgPrev
+      \ call arglist_plus#ArgPrev(<bang>0, <count>)
+command! -count=0 -bang ArgSel
+      \ call arglist_plus#ArgSel(<bang>0, <count>)
+command! -nargs=? -bang -complete=arglist ArgGo
+      \ call arglist_plus#ArgGo(<bang>0, <f-args>)
 
-command! -nargs=* -bang -complete=file ArgAdd call arglist_plus#ArgAdd(<bang>0, <f-args>)
-command! -nargs=* -bang -complete=buffer ArgAddBuf call arglist_plus#ArgAdd(<bang>0, <f-args>)
-command! -nargs=* -bang -complete=arglist ArgDel call arglist_plus#ArgDel(<bang>0, <f-args>)
-command! -nargs=* -bang -complete=arglist ArgBufDel call arglist_plus#ArgBufDel(<bang>0, <f-args>)
-command! -nargs=* -bang -complete=arglist ArgFileDel call arglist_plus#ArgFileDel(<bang>0, <f-args>)
+" TODO more complete options
+command! -nargs=* -complete=file ArgAdd
+      \ call arglist_plus#ArgAdd(<f-args>)
+command! -nargs=* -complete=buffer ArgAddBuf
+      \ call arglist_plus#ArgAdd(<f-args>)
+command! -nargs=* -bang -complete=file ArgEdit
+      \ call arglist_plus#ArgEdit(<bang>0, <f-args>)
+command! -nargs=* -bang -complete=buffer ArgEditBuf
+      \ call arglist_plus#ArgEdit(<bang>0, <f-args>)
+
+command! -nargs=* -bang -complete=arglist ArgDel
+      \ call arglist_plus#ArgDel(<bang>0, <f-args>)
+command! -nargs=* -bang -complete=arglist ArgBufDel
+      \ call arglist_plus#ArgBufDel(<bang>0, <f-args>)
+command! -nargs=* -bang -complete=arglist ArgFileDel
+      \ call arglist_plus#ArgFileDel(<bang>0, <f-args>)
 
 command! -nargs=0 ArgList echo arglist_plus#ArgList()
-command! -nargs=0 ArgListV echo arglist_plus#ArgListV()
-command! -nargs=0 ArgListH echo arglist_plus#ArgListH()
+command! -nargs=0 ArgVList echo arglist_plus#ArgVList()
+command! -nargs=0 ArgHList echo arglist_plus#ArgHList()
 
 command! -nargs=0 ArgGtoL call arglist_plus#ArgGtoL()
 command! -nargs=0 ArgLtoG call arglist_plus#ArgLtoG()
@@ -130,14 +168,26 @@ command! -nargs=0 ArgExchange call arglist_plus#ArgExchange()
 
 map <Plug>ArgNext :ArgNext<CR>
 map <Plug>ArgPrev :ArgPrev<CR>
+map <Plug>ArgSel :ArgSel<CR>
+map <Plug>ArgGo :<C-u>ArgGo<CR>
+map <Plug>Arg!Next :ArgNext!<CR>
+map <Plug>Arg!Prev :ArgPrev!<CR>
+map <Plug>Arg!Sel :ArgSel!<CR>
+map <Plug>Arg!Go :<C-u>ArgGo!<CR>
+
+map <Plug>ArgAdd :<C-u>ArgAdd<CR>
+map <Plug>ArgEdit :<C-u>ArgEdit<CR>
+map <Plug>Arg!Edit :<C-u>ArgEdit<CR>
 
 map <Plug>ArgDel :<C-u>ArgDel<CR>
 map <Plug>ArgDelBuf :<C-u>ArgDelBuf<CR>
-map <Plug>ArgList :<C-u>ArgList<CR>
+map <Plug>Arg!Del :<C-u>ArgDel<CR>
+map <Plug>Arg!DelBuf :<C-u>ArgDelBuf<CR>
 
 map <Plug>ArgList :<C-u>ArgList<CR>
-map <Plug>ArgListV :<C-u>ArgListV<CR>
-map <Plug>ArgListH :<C-u>ArgListH<CR>
+map <Plug>ArgVList :<C-u>ArgVList<CR>
+map <Plug>ArgHList :<C-u>ArgHList<CR>
+
 map <Plug>ArgGtoL :<C-u>ArgGtoL<CR>
 map <Plug>ArgLtoG :<C-u>ArgLtoG<CR>
 
