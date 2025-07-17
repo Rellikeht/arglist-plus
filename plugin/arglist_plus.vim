@@ -5,11 +5,11 @@ if exists("g:loaded_arglist_plus")
 endif
 let g:loaded_arglist_plus = 1
 
-" TODO local/global, copy/not copy
+" TODO local/global, fresh/copied
 let g:arglist_plus#tab_local = 1
-let g:arglist_plus#tab_copy_local = 1
-let g:arglist_plus#win_local = 1
-let g:arglist_plus#win_copy_local = 1
+let g:arglist_plus#tab_empty = 0
+let g:arglist_plus#win_local = 0
+let g:arglist_plus#win_empty = 0
 
 " }}}
 
@@ -19,6 +19,20 @@ let g:arglist_plus#win_copy_local = 1
 
 function s:cbang(command, bang)
   return a:command.(a:bang ? "!" : "")
+endfunction
+
+function s:check_var(name, scopes)
+  for scope in a:scopes
+    let l:var = scope.":".a:name
+    if exists(l:var) && eval(l:var)
+      return v:true
+    endif
+  endfor
+  return v:false
+endfunction
+
+function s:instantiate(args)
+  return join(map(a:args, 'fnameescape(v:val)'), " ")
 endfunction
 
 " }}}
@@ -42,6 +56,14 @@ function arglist_plus#ArgHList()
   let l:args = argv()
   let l:args[argidx()] = "[".l:args[argidx()]."]"
   return join(l:args, " ")
+endfunction
+
+function arglist_plus#ArgAList()
+  let l:horizontal = arglist_plus#ArgHList()
+  if len(l:horizontal) <= &columns
+    return l:horizontal
+  endif
+  return arglist_plus#ArgVList()
 endfunction
 
 " }}}
@@ -129,17 +151,27 @@ endfunction
 
 function arglist_plus#ArgLtoG()
   " replaces global with copy of local
-  " TODO
+  if arglistid() == 0
+    throw "Not using local arglist"
+  endif
+  exe "argglobal ".s:instantiate(argv())
 endfunction
 
 function arglist_plus#ArgGtoL()
   " replaces local with copy of global
-  " TODO
+  arglocal
 endfunction
 
 function arglist_plus#ArgExchange()
-  " exchanges global and local 
-  " TODO
+  " exchanges global and local
+  if arglistid() == 0
+    throw "Arglist isn't local, there is nothing to exchange"
+  endif
+  let l:local_copy = argv()
+  arglocal
+  let l:global_copy = argv()
+  exe "argglobal ".s:instantiate(l:local_copy)
+  exe "arglocal ".s:instantiate(l:global_copy)
 endfunction
 
 " }}}
@@ -159,6 +191,7 @@ command! -nargs=? -bang ArgSelN
 command! -nargs=? -bang -complete=arglist ArgGo
       \ call arglist_plus#ArgGo(<bang>0, <f-args>)
 
+" TODO counts
 command! -nargs=+ -complete=file ArgAdd
       \ call arglist_plus#ArgAdd(<f-args>)
 command! -nargs=+ -complete=buffer ArgAddBuf
@@ -178,6 +211,7 @@ command! -nargs=* -bang -complete=arglist ArgFileDel
 command! -nargs=0 ArgList echo arglist_plus#ArgList()
 command! -nargs=0 ArgVList echo arglist_plus#ArgVList()
 command! -nargs=0 ArgHList echo arglist_plus#ArgHList()
+command! -nargs=0 ArgAList echo arglist_plus#ArgAList()
 
 command! -nargs=0 ArgGtoL call arglist_plus#ArgGtoL()
 command! -nargs=0 ArgLtoG call arglist_plus#ArgLtoG()
@@ -186,6 +220,8 @@ command! -nargs=0 ArgExchange call arglist_plus#ArgExchange()
 " }}}
 
 " maps {{{
+
+" basic {{{
 
 map <Plug>ArgNext :ArgNext<CR>
 map <Plug>ArgPrev :ArgPrev<CR>
@@ -208,15 +244,52 @@ map <Plug>Arg!DelBuf :<C-u>ArgDelBuf<CR>
 map <Plug>ArgList :<C-u>ArgList<CR>
 map <Plug>ArgVList :<C-u>ArgVList<CR>
 map <Plug>ArgHList :<C-u>ArgHList<CR>
+map <Plug>ArgAList :<C-u>ArgAList<CR>
 
 map <Plug>ArgGtoL :<C-u>ArgGtoL<CR>
 map <Plug>ArgLtoG :<C-u>ArgLtoG<CR>
 
 " }}}
 
+" predefined numbers {{{
+
+map <Plug>ArgSel1 :<C-u>ArgSelN 1<CR>
+map <Plug>ArgSel2 :<C-u>ArgSelN 2<CR>
+map <Plug>ArgSel3 :<C-u>ArgSelN 3<CR>
+map <Plug>ArgSel4 :<C-u>ArgSelN 4<CR>
+map <Plug>ArgSel5 :<C-u>ArgSelN 5<CR>
+map <Plug>ArgSel6 :<C-u>ArgSelN 6<CR>
+map <Plug>ArgSel7 :<C-u>ArgSelN 7<CR>
+map <Plug>ArgSel8 :<C-u>ArgSelN 8<CR>
+map <Plug>ArgSel9 :<C-u>ArgSelN 9<CR>
+
+map <Plug>Arg!Sel1 :<C-u>ArgSelN! 1<CR>
+map <Plug>Arg!Sel2 :<C-u>ArgSelN! 2<CR>
+map <Plug>Arg!Sel3 :<C-u>ArgSelN! 3<CR>
+map <Plug>Arg!Sel4 :<C-u>ArgSelN! 4<CR>
+map <Plug>Arg!Sel5 :<C-u>ArgSelN! 5<CR>
+map <Plug>Arg!Sel6 :<C-u>ArgSelN! 6<CR>
+map <Plug>Arg!Sel7 :<C-u>ArgSelN! 7<CR>
+map <Plug>Arg!Sel8 :<C-u>ArgSelN! 8<CR>
+map <Plug>Arg!Sel9 :<C-u>ArgSelN! 9<CR>
+
+" }}}
+
+" }}}
+
 " setup {{{
 
-" autocmd TabNew
-" TODO option for copying current list for new tab
+" TODO how to properly copy when needed
+" function s:tab_arglist()
+"   if s:check_var("arglist_plus#tab_local", ["t", "g"])
+"     arglocal
+"     if s:check_var("arglist_plus#tab_empty", ["t", "g"])
+"       %argd
+"     endif
+"   endif
+" endfunction
+
+" autocmd TabNew * call s:tab_arglist()
+" autocmd WinNew * call s:win_arglist()
 
 " }}}
