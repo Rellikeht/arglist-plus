@@ -31,13 +31,17 @@ function arglist_plus#ArgList()
 endfunction
 
 function arglist_plus#ArgVList()
-  " TODO return list representation with each argument on separate line
-  return ""
+  " return list representation with each argument on separate line
+  let l:args = argv()
+  let l:args[argidx()] = "[".l:args[argidx()]."]"
+  return join(l:args, "\n")
 endfunction
 
 function arglist_plus#ArgHList()
-  " TODO return list representation that takes only one line
-  return ""
+  " return list representation that takes only one line
+  let l:args = argv()
+  let l:args[argidx()] = "[".l:args[argidx()]."]"
+  return join(l:args, " ")
 endfunction
 
 " }}}
@@ -54,17 +58,20 @@ function arglist_plus#ArgPrev(bang, n)
   exe s:cbang("argument", a:bang)." ".(l:n + 1)
 endfunction
 
-function arglist_plus#ArgSel(bang, n)
+function arglist_plus#ArgSel(bang, n=0)
   if a:n == 0
-    argument
+    exe s:cbang("argument", a:bang)
+  else
+    exe s:cbang("argument", a:bang)." ".a:n
   endif
-  exe s:cbang("argument", a:bang)." ".a:n
 endfunction
 
 function arglist_plus#ArgGo(bang, name="")
   if a:name == ""
-    argument
+    exe s:cbang("argument", a:bang)
   else
+    " avoid duplication of entries
+    " version with argdedupe doesn't work sometimes
     let l:idx = index(argv(), a:name)
     if l:idx == -1
       exe s:cbang("argedit", a:bang)." ".a:name
@@ -79,13 +86,26 @@ endfunction
 " operations on list elements {{{
 
 function arglist_plus#ArgAdd(...)
-  " adds arguments to list
-  " TODO
+  let l:cmd = "argadd "
+  for arg in a:000
+    for file in split(expand(arg), "\n")
+      if index(argv(), file) == -1
+        let l:cmd = l:cmd." ".fnameescape(file)
+      endif
+    endfor
+  endfor
+  exe l:cmd
 endfunction
 
 function arglist_plus#ArgEdit(bang, ...)
-  " adds arguments to list and edits first added
-  " TODO
+  " adds arguments to list and edits first
+  let l:first = split(expand(a:1), "\n")[0]
+  let l:idx = index(argv(), l:first)
+  if l:idx == -1
+    let l:idx = argc()
+  endif
+  call call("arglist_plus#ArgAdd", a:000)
+  exe s:cbang("argument", a:bang)." ".(l:idx + 1)
 endfunction
 
 function arglist_plus#ArgDel(bang, ...)
@@ -134,17 +154,18 @@ command! -count=1 -bang ArgPrev
       \ call arglist_plus#ArgPrev(<bang>0, <count>)
 command! -count=0 -bang ArgSel
       \ call arglist_plus#ArgSel(<bang>0, <count>)
+command! -nargs=? -bang ArgSelN
+      \ call arglist_plus#ArgSel(<bang>0, 0<f-args>)
 command! -nargs=? -bang -complete=arglist ArgGo
       \ call arglist_plus#ArgGo(<bang>0, <f-args>)
 
-" TODO more complete options
-command! -nargs=* -complete=file ArgAdd
+command! -nargs=+ -complete=file ArgAdd
       \ call arglist_plus#ArgAdd(<f-args>)
-command! -nargs=* -complete=buffer ArgAddBuf
+command! -nargs=+ -complete=buffer ArgAddBuf
       \ call arglist_plus#ArgAdd(<f-args>)
-command! -nargs=* -bang -complete=file ArgEdit
+command! -nargs=+ -bang -complete=file ArgEdit
       \ call arglist_plus#ArgEdit(<bang>0, <f-args>)
-command! -nargs=* -bang -complete=buffer ArgEditBuf
+command! -nargs=+ -bang -complete=buffer ArgEditBuf
       \ call arglist_plus#ArgEdit(<bang>0, <f-args>)
 
 command! -nargs=* -bang -complete=arglist ArgDel
