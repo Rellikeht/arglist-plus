@@ -1,20 +1,3 @@
-" settings {{{
-
-if exists("g:loaded_aplus")
-  finish
-endif
-let g:loaded_aplus = 1
-
-" TODO local/global, fresh/copied
-let g:aplus#tab_local = 1
-let g:aplus#tab_empty = 0
-let g:aplus#win_local = 0
-let g:aplus#win_empty = 0
-
-" }}}
-
-" functions {{{
-
 " helpers {{{
 
 function s:cbang(command, bang)
@@ -35,7 +18,32 @@ function s:instantiate(args)
   return join(map(a:args, 'fnameescape(v:val)'), " ")
 endfunction
 
+function s:set_if_not_exist(name, value)
+    if !exists(a:name)
+      exe "let ".a:name." = ".a:value
+    endif
+endfunction
+
 " }}}
+
+" settings {{{
+
+if exists("g:loaded_aplus")
+  finish
+endif
+let g:loaded_aplus = 1
+
+call s:set_if_not_exist("g:aplus#dedupe_on_start", 1)
+
+" TODO local/global, fresh/copied
+call s:set_if_not_exist("g:aplus#tab_local", 1)
+call s:set_if_not_exist("g:aplus#tab_empty", 0)
+call s:set_if_not_exist("g:aplus#win_local", 0)
+call s:set_if_not_exist("g:aplus#win_empty", 0)
+
+" }}}
+
+" functions {{{
 
 " information {{{
 
@@ -248,6 +256,7 @@ map <Plug>AAList :<C-u>AAList<CR>
 
 map <Plug>AGtoL :<C-u>AGtoL<CR>
 map <Plug>ALtoG :<C-u>ALtoG<CR>
+map <Plug>AExchange :<C-u>AExchange<CR>
 
 " }}}
 
@@ -291,5 +300,9 @@ map <Plug>A!Sel9 :<C-u>ASelN! 9<CR>
 
 " autocmd TabNew * call s:tab_arglist()
 " autocmd WinNew * call s:win_arglist()
+
+if s:check_var("aplus#dedupe_on_start", ["g"])
+  argdedupe
+endif
 
 " }}}
