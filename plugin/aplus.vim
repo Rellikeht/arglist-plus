@@ -28,6 +28,30 @@ function s:set_if_not_exist(name, value)
     endif
 endfunction
 
+function s:expand_args_loop(cmd, list)
+  if len(a:list) == 0
+    exe a:cmd." ".fnameescape(expand("%"))
+    return
+  endif
+  for arg in a:list
+    for file in split(expand(arg), "\n")
+      exe a:cmd." ".fnameescape(file)
+    endfor
+  endfor
+endfunction
+
+function s:rem_and_del(bang, file="")
+  let l:file = a:file
+  if a:file == ""
+    let l:file = fnameescape(expand("%"))
+  endif
+  exe s:cbang("bwipeout", a:bang)." ".l:file
+  call delete(l:file)
+endfunction
+
+command! -bang -nargs=? -complete=buffer DelFileAndBuf
+      \ call <SID>rem_and_del(<bang>0, <f-args>)
+
 " }}}
 
 " settings {{{
@@ -147,17 +171,25 @@ endfunction
 
 function aplus#delete(bang, ...)
   " deletes argument from list
-  " TODO
+  exe s:cbang("argdelete", a:bang)." ".join(a:000, " ")
 endfunction
 
 function aplus#delete_buf(bang, ...)
   " deletes argument from list and it's corresponding buffer
-  " TODO
+  call call("aplus#delete", insert(deepcopy(a:000), a:bang))
+  call s:expand_args_loop(s:cbang("bdelete", a:bang), a:000)
+endfunction
+
+function aplus#wipeout_buf(bang, ...)
+  " deletes argument from list and wipes out it's corresponding buffer
+  call call("aplus#delete", insert(deepcopy(a:000), a:bang))
+  call s:expand_args_loop(s:cbang("bwipeout", a:bang), a:000)
 endfunction
 
 function aplus#delete_file(bang, ...)
   " deletes argument from list, it's corresponding buffer and file
-  " TODO
+  call call("aplus#delete", insert(deepcopy(a:000), a:bang))
+  call s:expand_args_loop(s:cbang("DelFileAndBuf", a:bang), a:000)
 endfunction
 
 function aplus#move(from, to)
@@ -244,15 +276,18 @@ command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
 command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer ABufEdit
       \ call aplus#edit(<count>, <bang>0, <f-args>)
 
-" " Remove file from arglist
-" command! -nargs=* -bang -complete=arglist ADel
-"       \ call aplus#delete(<bang>0, <f-args>)
-" " Remove file from arglist and delete it's buffer
-" command! -nargs=* -bang -complete=arglist ABufDel
-"       \ call aplus#delete_buf(<bang>0, <f-args>)
-" " Remove file from arglist, buffer list and delete it from disk
-" command! -nargs=* -bang -complete=arglist AFileDel
-"       \ call aplus#delete_file(<bang>0, <f-args>)
+" Remove file from arglist
+command! -nargs=* -bang -complete=arglist ADel
+      \ call aplus#delete(<bang>0, <f-args>)
+" Remove file from arglist and delete it's buffer
+command! -nargs=* -bang -complete=arglist ABufDel
+      \ call aplus#delete_buf(<bang>0, <f-args>)
+" Remove file from arglist and wipe out it's buffer
+command! -nargs=* -bang -complete=arglist ABufWipe
+      \ call aplus#wipeout_buf(<bang>0, <f-args>)
+" Remove file from arglist, buffer list and delete it from disk
+command! -nargs=* -bang -complete=arglist AFileDel
+      \ call aplus#delete_file(<bang>0, <f-args>)
 
 " " Move current file to position of given file
 " command! -nargs=1 -complete=arglist AMoveTo
@@ -304,20 +339,28 @@ map <Plug>ANext :ANext<CR>
 map <Plug>APrev :APrev<CR>
 map <Plug>ASelect :ASelect<CR>
 map <Plug>AGo :<C-u>AGo<CR>
+map <Plug>!ANext :ANext!<CR>
+map <Plug>!APrev :APrev!<CR>
+map <Plug>!ASelect :ASelect!<CR>
+map <Plug>!AGo :<C-u>AGo!<CR>
 
-map <Plug>A!Next :ANext!<CR>
-map <Plug>A!Prev :APrev!<CR>
-map <Plug>A!Select :ASelect!<CR>
-map <Plug>A!Go :<C-u>AGo!<CR>
+map <Plug>!ANext :ANext!<CR>
+map <Plug>!APrev :APrev!<CR>
+map <Plug>!ASelect :ASelect!<CR>
+map <Plug>!AGo :<C-u>AGo!<CR>
 
 map <Plug>AAdd :<C-u>AAdd<CR>
 map <Plug>AEdit :<C-u>AEdit<CR>
-map <Plug>A!Edit :<C-u>AEdit<CR>
+map <Plug>!AEdit :<C-u>AEdit!<CR>
 
-" map <Plug>ADel :<C-u>ADel<CR>
-" map <Plug>ADelBuf :<C-u>ADelBuf<CR>
-" map <Plug>A!Del :<C-u>ADel<CR>
-" map <Plug>A!DelBuf :<C-u>ADelBuf<CR>
+map <Plug>ADel :<C-u>ADel<CR>
+map <Plug>ABufDel :<C-u>ABufDel<CR>
+map <Plug>ABufWipe :<C-u>ABufWipe<CR>
+map <Plug>AFileDel :<C-u>AFileDel<CR>
+map <Plug>!ADel :<C-u>ADel!<CR>
+map <Plug>!ABufDel :<C-u>ABufDel!<CR>
+map <Plug>!ABufWipe :<C-u>ABufWipe!<CR>
+map <Plug>!AFileDel :<C-u>AFileDel!<CR>
 
 map <Plug>AGlobToLoc :<C-u>AGlobToLoc<CR>
 map <Plug>ALocToGlob :<C-u>ALocToGlob<CR>
@@ -336,15 +379,15 @@ map <Plug>ASelect6 :<C-u>6ASelect<CR>
 map <Plug>ASelect7 :<C-u>7ASelect<CR>
 map <Plug>ASelect8 :<C-u>8ASelect<CR>
 map <Plug>ASelect9 :<C-u>9ASelect<CR>
-map <Plug>ASelect1! :<C-u>1ASelect!<CR>
-map <Plug>ASelect2! :<C-u>2ASelect!<CR>
-map <Plug>ASelect3! :<C-u>3ASelect!<CR>
-map <Plug>ASelect4! :<C-u>4ASelect!<CR>
-map <Plug>ASelect5! :<C-u>5ASelect!<CR>
-map <Plug>ASelect6! :<C-u>6ASelect!<CR>
-map <Plug>ASelect7! :<C-u>7ASelect!<CR>
-map <Plug>ASelect8! :<C-u>8ASelect!<CR>
-map <Plug>ASelect9! :<C-u>9ASelect!<CR>
+map <Plug>!ASelect1 :<C-u>1ASelect!<CR>
+map <Plug>!ASelect2 :<C-u>2ASelect!<CR>
+map <Plug>!ASelect3 :<C-u>3ASelect!<CR>
+map <Plug>!ASelect4 :<C-u>4ASelect!<CR>
+map <Plug>!ASelect5 :<C-u>5ASelect!<CR>
+map <Plug>!ASelect6 :<C-u>6ASelect!<CR>
+map <Plug>!ASelect7 :<C-u>7ASelect!<CR>
+map <Plug>!ASelect8 :<C-u>8ASelect!<CR>
+map <Plug>!ASelect9 :<C-u>9ASelect!<CR>
 
 map <Plug>ASelect-1 :<C-u>exe "ASelect ".<SID>mod_argc(-1)<CR>
 map <Plug>ASelect-2 :<C-u>exe "ASelect ".<SID>mod_argc(-2)<CR>
@@ -355,15 +398,15 @@ map <Plug>ASelect-6 :<C-u>exe "ASelect ".<SID>mod_argc(-6)<CR>
 map <Plug>ASelect-7 :<C-u>exe "ASelect ".<SID>mod_argc(-7)<CR>
 map <Plug>ASelect-8 :<C-u>exe "ASelect ".<SID>mod_argc(-8)<CR>
 map <Plug>ASelect-9 :<C-u>exe "ASelect ".<SID>mod_argc(-9)<CR>
-map <Plug>ASelect!-1 :<C-u>exe "ASelect! ".<SID>mod_argc(-1)<CR>
-map <Plug>ASelect!-2 :<C-u>exe "ASelect! ".<SID>mod_argc(-2)<CR>
-map <Plug>ASelect!-3 :<C-u>exe "ASelect! ".<SID>mod_argc(-3)<CR>
-map <Plug>ASelect!-4 :<C-u>exe "ASelect! ".<SID>mod_argc(-4)<CR>
-map <Plug>ASelect!-5 :<C-u>exe "ASelect! ".<SID>mod_argc(-5)<CR>
-map <Plug>ASelect!-6 :<C-u>exe "ASelect! ".<SID>mod_argc(-6)<CR>
-map <Plug>ASelect!-7 :<C-u>exe "ASelect! ".<SID>mod_argc(-7)<CR>
-map <Plug>ASelect!-8 :<C-u>exe "ASelect! ".<SID>mod_argc(-8)<CR>
-map <Plug>ASelect!-9 :<C-u>exe "ASelect! ".<SID>mod_argc(-9)<CR>
+map <Plug>!ASelect-1 :<C-u>exe "ASelect! ".<SID>mod_argc(-1)<CR>
+map <Plug>!ASelect-2 :<C-u>exe "ASelect! ".<SID>mod_argc(-2)<CR>
+map <Plug>!ASelect-3 :<C-u>exe "ASelect! ".<SID>mod_argc(-3)<CR>
+map <Plug>!ASelect-4 :<C-u>exe "ASelect! ".<SID>mod_argc(-4)<CR>
+map <Plug>!ASelect-5 :<C-u>exe "ASelect! ".<SID>mod_argc(-5)<CR>
+map <Plug>!ASelect-6 :<C-u>exe "ASelect! ".<SID>mod_argc(-6)<CR>
+map <Plug>!ASelect-7 :<C-u>exe "ASelect! ".<SID>mod_argc(-7)<CR>
+map <Plug>!ASelect-8 :<C-u>exe "ASelect! ".<SID>mod_argc(-8)<CR>
+map <Plug>!ASelect-9 :<C-u>exe "ASelect! ".<SID>mod_argc(-9)<CR>
 
 " }}}
 

@@ -1,4 +1,7 @@
-- argdo (argsdo ?)
+- rename file
 - custom completions
-- test `aplus#go`
 - counts on adding and deleting
+- command-addr
+- file under cursor
+- argdo (argsdo ?)
+- netrw (?)
