@@ -49,12 +49,19 @@ call s:set_if_not_exist("g:aplus#win_empty", 0)
 
 function aplus#arg_name()
   " returns filename of current argument
-  return argv()[argidx()]
+  let l:args = argv()
+  if len(l:args) == 0
+    return ""
+  endif
+  return l:args[argidx()]
 endfunction
 
 function aplus#vert_list()
   " returns arglist representation with each argument on separate line
   let l:args = argv()
+  if len(l:args) == 0
+    return ""
+  endif
   let l:args[argidx()] = "[".l:args[argidx()]."]"
   return join(l:args, "\n")
 endfunction
@@ -62,6 +69,9 @@ endfunction
 function aplus#horiz_list()
   " returns arglist representation with all elements next to each other
   let l:args = argv()
+  if len(l:args) == 0
+    return ""
+  endif
   let l:args[argidx()] = "[".l:args[argidx()]."]"
   return join(l:args, " ")
 endfunction
@@ -121,28 +131,16 @@ endfunction
 
 " operations on list elements {{{
 
-function aplus#add(...)
+function aplus#add(place, ...)
   " adds (only not already present) files to arglist
-  let l:cmd = "argadd "
-  for arg in a:000
-    for file in split(expand(arg), "\n")
-      if index(argv(), file) == -1
-        let l:cmd = l:cmd." ".fnameescape(file)
-      endif
-    endfor
-  endfor
-  exe l:cmd
+  exe a:place."argadd ".join(a:000, " ")
+  argdedupe
 endfunction
 
-function aplus#edit(bang, ...)
+function aplus#edit(place, bang, ...)
   " adds (only not already present) files to arglist and edits first
-  let l:first = split(expand(a:1), "\n")[0]
-  let l:idx = index(argv(), l:first)
-  if l:idx == -1
-    let l:idx = argc()
-  endif
-  call call("aplus#add", a:000)
-  exe s:cbang("argument", a:bang)." ".(l:idx + 1)
+  exe a:place.s:cbang("argedit", a:bang)." ".join(a:000, " ")
+  argdedupe
 endfunction
 
 function aplus#delete(bang, ...)
@@ -160,9 +158,18 @@ function aplus#delete_file(bang, ...)
   " TODO
 endfunction
 
-function aplus#move(index, position)
-  " moves element at index to given position in list
+function aplus#move(from, to)
+  " moves element at a:from to given a:to position in list
+  let l:argv = argv()
   " TODO
+  call aplus#define(l:argv)
+endfunction
+
+function aplus#swap(from, to)
+  " swaps element at a:from with file at a:to position in list
+  let l:argv = argv()
+  " TODO
+  call aplus#define(l:argv)
 endfunction
 
 " }}}
@@ -206,42 +213,71 @@ endfunction
 
 " commands {{{
 
-command! -count=1 -bang ANext
-      \ call aplus#next(<bang>0, <count>)
-command! -count=1 -bang APrev
-      \ call aplus#prev(<bang>0, <count>)
-command! -count=0 -bang ASelect
-      \ call aplus#select(<bang>0, <count>)
-command! -nargs=? -bang ANSelect
-      \ call aplus#select(<bang>0, 0<f-args>)
-command! -nargs=? -bang -complete=arglist AGo
-      \ call aplus#go(<bang>0, <f-args>)
-
-command! -nargs=+ -complete=file AAdd
-      \ call aplus#add(<f-args>)
-command! -nargs=+ -complete=buffer ABufAdd
-      \ call aplus#add(<f-args>)
-command! -nargs=+ -bang -complete=file AEdit
-      \ call aplus#edit(<bang>0, <f-args>)
-command! -nargs=+ -bang -complete=buffer ABufEdit
-      \ call aplus#edit(<bang>0, <f-args>)
-
-command! -nargs=* -bang -complete=arglist ADel
-      \ call aplus#delete(<bang>0, <f-args>)
-command! -nargs=* -bang -complete=arglist ABufDel
-      \ call aplus#delete_buf(<bang>0, <f-args>)
-command! -nargs=* -bang -complete=arglist AFileDel
-      \ call aplus#delete_file(<bang>0, <f-args>)
-
-command! -count=0 AMove
-      \ call aplus#move(<count>, aplus#arg_name())
-command! -nargs=1 -complete=arglist AMoveArg
-      \ call aplus#move(argidx(), <f-args>)
-
 command! -nargs=0 AName echo aplus#arg_name()
 command! -nargs=0 AList echo aplus#list()
 command! -nargs=0 AVertList echo aplus#vert_list()
 command! -nargs=0 AHorizList echo aplus#horiz_list()
+
+command! -count=1 -nargs=0 -bang ANext
+      \ call aplus#next(<bang>0, <count>)
+command! -count=1 -nargs=0 -bang APrev
+      \ call aplus#prev(<bang>0, <count>)
+
+" Select n'th (indexed from 1) file
+command! -count=0 -nargs=0 -bang ASelect
+      \ call aplus#select(<bang>0, <count>)
+command! -nargs=? -bang ASelectN
+      \ call aplus#select(<bang>0, 0<f-args>)
+
+" Go to file by name
+command! -nargs=? -bang -complete=arglist AGo
+      \ call aplus#go(<bang>0, <f-args>)
+
+" Add file(s) to arglist
+command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
+      \ call aplus#add(<count>, <f-args>)
+command! -range=% -addr=arguments -nargs=+ -complete=buffer ABufAdd
+      \ call aplus#add(<count>, <f-args>)
+
+" Add file(s) to arglist and edit (first)
+command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
+      \ call aplus#edit(<count>, <bang>0, <f-args>)
+command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer ABufEdit
+      \ call aplus#edit(<count>, <bang>0, <f-args>)
+
+" " Remove file from arglist
+" command! -nargs=* -bang -complete=arglist ADel
+"       \ call aplus#delete(<bang>0, <f-args>)
+" " Remove file from arglist and delete it's buffer
+" command! -nargs=* -bang -complete=arglist ABufDel
+"       \ call aplus#delete_buf(<bang>0, <f-args>)
+" " Remove file from arglist, buffer list and delete it from disk
+" command! -nargs=* -bang -complete=arglist AFileDel
+"       \ call aplus#delete_file(<bang>0, <f-args>)
+
+" " Move current file to position of given file
+" command! -nargs=1 -complete=arglist AMoveTo
+"       \ call aplus#move(argidx(), <f-args>)
+" " Swap current file with given file
+" command! -nargs=1 -complete=arglist ASwapWith
+"       \ call aplus#swap(argidx(), <f-args>)
+
+" " Move current file to position given as count or argument
+" command! -count=0 -nargs=? AMoveToN
+"       \ call aplus#move(argidx(), <count> || 0<f-args>)
+" " Swap current file with file at position given as count or argument
+" command! -count=0 -nargs=? ASwapWithN
+"       \ call aplus#swap(argidx(), <count> || 0<f-args>)
+
+" " Move file to position given as count or argument
+" command! -count=1 -nargs=1 AMoveN
+"       \ call aplus#move(<count>, <f-args>)
+" " Move first file to position of second file
+" command! -nargs=+ -complete=arglist AMove
+"       \ call aplus#move(<f-args>)
+" " Swap current file with file at position given as count or argument
+" command! -nargs=+ -complete=arglist ASwap
+"       \ call aplus#swap(<f-args>)
 
 command! -nargs=* -complete=file ADefine
       \ call aplus#define(<f-args>)
@@ -249,6 +285,7 @@ command! -nargs=* -complete=buffer ADefineBuf
       \ call aplus#define(<f-args>)
 command! -nargs=* -complete=arglist ADefineArgs
       \ call aplus#define(<f-args>)
+
 command! -nargs=0 AGlobToLoc call aplus#glob_to_loc()
 command! -nargs=0 ALocToGlob call aplus#log_to_glob()
 command! -nargs=0 AExchange call aplus#exchange()
@@ -259,28 +296,29 @@ command! -nargs=0 AExchange call aplus#exchange()
 
 " basic {{{
 
+map <Plug>AName :<C-u>AName<CR>
+map <Plug>AList :<C-u>AList<CR>
+map <Plug>AVertList :<C-u>AVertList<CR>
+map <Plug>AHorizList :<C-u>AHorizList<CR>
+
 map <Plug>ANext :ANext<CR>
 map <Plug>APrev :APrev<CR>
 map <Plug>ASelect :ASelect<CR>
 map <Plug>AGo :<C-u>AGo<CR>
+
 map <Plug>A!Next :ANext!<CR>
 map <Plug>A!Prev :APrev!<CR>
 map <Plug>A!Select :ASelect!<CR>
 map <Plug>A!Go :<C-u>AGo!<CR>
 
-map <Plug>AAdd :<C-u>AAdd<CR>
-map <Plug>AEdit :<C-u>AEdit<CR>
-map <Plug>A!Edit :<C-u>AEdit<CR>
+" map <Plug>AAdd :<C-u>AAdd<CR>
+" map <Plug>AEdit :<C-u>AEdit<CR>
+" map <Plug>A!Edit :<C-u>AEdit<CR>
 
-map <Plug>ADel :<C-u>ADel<CR>
-map <Plug>ADelBuf :<C-u>ADelBuf<CR>
-map <Plug>A!Del :<C-u>ADel<CR>
-map <Plug>A!DelBuf :<C-u>ADelBuf<CR>
-
-map <Plug>AName :<C-u>AName<CR>
-map <Plug>AList :<C-u>AList<CR>
-map <Plug>AVertList :<C-u>AVertList<CR>
-map <Plug>AHorizList :<C-u>AHorizList<CR>
+" map <Plug>ADel :<C-u>ADel<CR>
+" map <Plug>ADelBuf :<C-u>ADelBuf<CR>
+" map <Plug>A!Del :<C-u>ADel<CR>
+" map <Plug>A!DelBuf :<C-u>ADelBuf<CR>
 
 map <Plug>AGlobToLoc :<C-u>AGlobToLoc<CR>
 map <Plug>ALocToGlob :<C-u>ALocToGlob<CR>
@@ -290,25 +328,25 @@ map <Plug>AExchange :<C-u>AExchange<CR>
 
 " predefined numbers {{{
 
-map <Plug>ASelect1 :<C-u>ANSelect 1<CR>
-map <Plug>ASelect2 :<C-u>ANSelect 2<CR>
-map <Plug>ASelect3 :<C-u>ANSelect 3<CR>
-map <Plug>ASelect4 :<C-u>ANSelect 4<CR>
-map <Plug>ASelect5 :<C-u>ANSelect 5<CR>
-map <Plug>ASelect6 :<C-u>ANSelect 6<CR>
-map <Plug>ASelect7 :<C-u>ANSelect 7<CR>
-map <Plug>ASelect8 :<C-u>ANSelect 8<CR>
-map <Plug>ASelect9 :<C-u>ANSelect 9<CR>
+map <Plug>ASelect1 :<C-u>1ASelect<CR>
+map <Plug>ASelect2 :<C-u>2ASelect<CR>
+map <Plug>ASelect3 :<C-u>3ASelect<CR>
+map <Plug>ASelect4 :<C-u>4ASelect<CR>
+map <Plug>ASelect5 :<C-u>5ASelect<CR>
+map <Plug>ASelect6 :<C-u>6ASelect<CR>
+map <Plug>ASelect7 :<C-u>7ASelect<CR>
+map <Plug>ASelect8 :<C-u>8ASelect<CR>
+map <Plug>ASelect9 :<C-u>9ASelect<CR>
 
-map <Plug>A!Select1 :<C-u>ANSelect! 1<CR>
-map <Plug>A!Select2 :<C-u>ANSelect! 2<CR>
-map <Plug>A!Select3 :<C-u>ANSelect! 3<CR>
-map <Plug>A!Select4 :<C-u>ANSelect! 4<CR>
-map <Plug>A!Select5 :<C-u>ANSelect! 5<CR>
-map <Plug>A!Select6 :<C-u>ANSelect! 6<CR>
-map <Plug>A!Select7 :<C-u>ANSelect! 7<CR>
-map <Plug>A!Select8 :<C-u>ANSelect! 8<CR>
-map <Plug>A!Select9 :<C-u>ANSelect! 9<CR>
+map <Plug>A!Select1 :<C-u>1ASelect!<CR>
+map <Plug>A!Select2 :<C-u>2ASelect!<CR>
+map <Plug>A!Select3 :<C-u>3ASelect!<CR>
+map <Plug>A!Select4 :<C-u>4ASelect!<CR>
+map <Plug>A!Select5 :<C-u>5ASelect!<CR>
+map <Plug>A!Select6 :<C-u>6ASelect!<CR>
+map <Plug>A!Select7 :<C-u>7ASelect!<CR>
+map <Plug>A!Select8 :<C-u>8ASelect!<CR>
+map <Plug>A!Select9 :<C-u>9ASelect!<CR>
 
 " map <Plug>AMove1 :<C-u>AMove 1<CR>
 " map <Plug>AMove2 :<C-u>AMove 2<CR>
