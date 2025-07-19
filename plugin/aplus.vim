@@ -4,6 +4,10 @@ function s:cbang(command, bang)
   return a:command.(a:bang ? "!" : "")
 endfunction
 
+function s:mod_argc(n)
+  return (argc() + a:n % argc()) % argc()
+endfunction
+
 function s:check_var(name, scopes)
   for scope in a:scopes
     let l:var = scope.":".a:name
@@ -92,14 +96,12 @@ endfunction
 
 function aplus#next(bang, n)
   " moves to n'th (wrapping around) next argument
-  let l:n = (argidx() + a:n) % argc()
-  exe s:cbang("argument", a:bang)." ".(l:n + 1)
+  exe s:cbang("argument", a:bang)." ".(s:mod_argc(argidx() + a:n) + 1)
 endfunction
 
 function aplus#prev(bang, n)
   " moves to n'th (wrapping around) previous argument
-  let l:n = (argc() + argidx() - a:n % argc()) % argc()
-  exe s:cbang("argument", a:bang)." ".(l:n + 1)
+  exe s:cbang("argument", a:bang)." ".(s:mod_argc(argidx() - a:n) + 1)
 endfunction
 
 function aplus#select(bang, n=0)
@@ -117,7 +119,7 @@ function aplus#go(bang, name="")
     exe s:cbang("argument", a:bang)
   else
     " avoid duplication of entries
-    " version with argdedupe doesn't work sometimes
+    " version with argdedupe doesn't work sometimes ?
     let l:idx = index(argv(), a:name)
     if l:idx == -1
       exe s:cbang("argedit", a:bang)." ".a:name
@@ -198,7 +200,7 @@ endfunction
 function aplus#exchange()
   " exchanges global and local
   if arglistid() == 0
-    throw "Alist isn't local, there is nothing to exchange"
+    throw "Not using local arglist, there is nothing to exchange"
   endif
   let l:local_copy = argv()
   arglocal
@@ -224,11 +226,8 @@ command! -count=1 -nargs=0 -bang APrev
       \ call aplus#prev(<bang>0, <count>)
 
 " Select n'th (indexed from 1) file
-command! -count=0 -nargs=0 -bang ASelect
-      \ call aplus#select(<bang>0, <count>)
-command! -nargs=? -bang ASelectN
-      \ call aplus#select(<bang>0, 0<f-args>)
-
+command! -count=0 -nargs=? -bang ASelect
+      \ call aplus#select(<bang>0, [<count>, <f-args>][0])
 " Go to file by name
 command! -nargs=? -bang -complete=arglist AGo
       \ call aplus#go(<bang>0, <f-args>)
@@ -311,9 +310,9 @@ map <Plug>A!Prev :APrev!<CR>
 map <Plug>A!Select :ASelect!<CR>
 map <Plug>A!Go :<C-u>AGo!<CR>
 
-" map <Plug>AAdd :<C-u>AAdd<CR>
-" map <Plug>AEdit :<C-u>AEdit<CR>
-" map <Plug>A!Edit :<C-u>AEdit<CR>
+map <Plug>AAdd :<C-u>AAdd<CR>
+map <Plug>AEdit :<C-u>AEdit<CR>
+map <Plug>A!Edit :<C-u>AEdit<CR>
 
 " map <Plug>ADel :<C-u>ADel<CR>
 " map <Plug>ADelBuf :<C-u>ADelBuf<CR>
@@ -337,26 +336,34 @@ map <Plug>ASelect6 :<C-u>6ASelect<CR>
 map <Plug>ASelect7 :<C-u>7ASelect<CR>
 map <Plug>ASelect8 :<C-u>8ASelect<CR>
 map <Plug>ASelect9 :<C-u>9ASelect<CR>
+map <Plug>ASelect1! :<C-u>1ASelect!<CR>
+map <Plug>ASelect2! :<C-u>2ASelect!<CR>
+map <Plug>ASelect3! :<C-u>3ASelect!<CR>
+map <Plug>ASelect4! :<C-u>4ASelect!<CR>
+map <Plug>ASelect5! :<C-u>5ASelect!<CR>
+map <Plug>ASelect6! :<C-u>6ASelect!<CR>
+map <Plug>ASelect7! :<C-u>7ASelect!<CR>
+map <Plug>ASelect8! :<C-u>8ASelect!<CR>
+map <Plug>ASelect9! :<C-u>9ASelect!<CR>
 
-map <Plug>A!Select1 :<C-u>1ASelect!<CR>
-map <Plug>A!Select2 :<C-u>2ASelect!<CR>
-map <Plug>A!Select3 :<C-u>3ASelect!<CR>
-map <Plug>A!Select4 :<C-u>4ASelect!<CR>
-map <Plug>A!Select5 :<C-u>5ASelect!<CR>
-map <Plug>A!Select6 :<C-u>6ASelect!<CR>
-map <Plug>A!Select7 :<C-u>7ASelect!<CR>
-map <Plug>A!Select8 :<C-u>8ASelect!<CR>
-map <Plug>A!Select9 :<C-u>9ASelect!<CR>
-
-" map <Plug>AMove1 :<C-u>AMove 1<CR>
-" map <Plug>AMove2 :<C-u>AMove 2<CR>
-" map <Plug>AMove3 :<C-u>AMove 3<CR>
-" map <Plug>AMove4 :<C-u>AMove 4<CR>
-" map <Plug>AMove5 :<C-u>AMove 5<CR>
-" map <Plug>AMove6 :<C-u>AMove 6<CR>
-" map <Plug>AMove7 :<C-u>AMove 7<CR>
-" map <Plug>AMove8 :<C-u>AMove 8<CR>
-" map <Plug>AMove9 :<C-u>AMove 9<CR>
+map <Plug>ASelect-1 :<C-u>exe "ASelect ".<SID>mod_argc(-1)<CR>
+map <Plug>ASelect-2 :<C-u>exe "ASelect ".<SID>mod_argc(-2)<CR>
+map <Plug>ASelect-3 :<C-u>exe "ASelect ".<SID>mod_argc(-3)<CR>
+map <Plug>ASelect-4 :<C-u>exe "ASelect ".<SID>mod_argc(-4)<CR>
+map <Plug>ASelect-5 :<C-u>exe "ASelect ".<SID>mod_argc(-5)<CR>
+map <Plug>ASelect-6 :<C-u>exe "ASelect ".<SID>mod_argc(-6)<CR>
+map <Plug>ASelect-7 :<C-u>exe "ASelect ".<SID>mod_argc(-7)<CR>
+map <Plug>ASelect-8 :<C-u>exe "ASelect ".<SID>mod_argc(-8)<CR>
+map <Plug>ASelect-9 :<C-u>exe "ASelect ".<SID>mod_argc(-9)<CR>
+map <Plug>ASelect!-1 :<C-u>exe "ASelect! ".<SID>mod_argc(-1)<CR>
+map <Plug>ASelect!-2 :<C-u>exe "ASelect! ".<SID>mod_argc(-2)<CR>
+map <Plug>ASelect!-3 :<C-u>exe "ASelect! ".<SID>mod_argc(-3)<CR>
+map <Plug>ASelect!-4 :<C-u>exe "ASelect! ".<SID>mod_argc(-4)<CR>
+map <Plug>ASelect!-5 :<C-u>exe "ASelect! ".<SID>mod_argc(-5)<CR>
+map <Plug>ASelect!-6 :<C-u>exe "ASelect! ".<SID>mod_argc(-6)<CR>
+map <Plug>ASelect!-7 :<C-u>exe "ASelect! ".<SID>mod_argc(-7)<CR>
+map <Plug>ASelect!-8 :<C-u>exe "ASelect! ".<SID>mod_argc(-8)<CR>
+map <Plug>ASelect!-9 :<C-u>exe "ASelect! ".<SID>mod_argc(-9)<CR>
 
 " }}}
 
