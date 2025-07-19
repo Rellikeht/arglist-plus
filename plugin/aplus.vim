@@ -47,48 +47,43 @@ call s:set_if_not_exist("g:aplus#win_empty", 0)
 
 " information {{{
 
-function aplus#AList()
-  " return default list representation
-  return execute("args")
-endfunction
-
-function aplus#AVList()
+function aplus#vert_list()
   " return list representation with each argument on separate line
   let l:args = argv()
   let l:args[argidx()] = "[".l:args[argidx()]."]"
   return join(l:args, "\n")
 endfunction
 
-function aplus#AHList()
+function aplus#horiz_list()
   " return list representation that takes only one line
   let l:args = argv()
   let l:args[argidx()] = "[".l:args[argidx()]."]"
   return join(l:args, " ")
 endfunction
 
-function aplus#AAList()
-  let l:horizontal = aplus#AHList()
+function aplus#list()
+  let l:horizontal = aplus#horiz_list()
   if len(l:horizontal) <= &columns
     return l:horizontal
   endif
-  return aplus#AVList()
+  return aplus#vert_list()
 endfunction
 
 " }}}
 
 " navigation {{{
 
-function aplus#ANext(bang, n)
+function aplus#next(bang, n)
   let l:n = (argidx() + a:n) % argc()
   exe s:cbang("argument", a:bang)." ".(l:n + 1)
 endfunction
 
-function aplus#APrev(bang, n)
+function aplus#prev(bang, n)
   let l:n = (argc() + argidx() - a:n % argc()) % argc()
   exe s:cbang("argument", a:bang)." ".(l:n + 1)
 endfunction
 
-function aplus#ASel(bang, n=0)
+function aplus#select(bang, n=0)
   if a:n == 0
     exe s:cbang("argument", a:bang)
   else
@@ -96,7 +91,7 @@ function aplus#ASel(bang, n=0)
   endif
 endfunction
 
-function aplus#AGo(bang, name="")
+function aplus#go(bang, name="")
   if a:name == ""
     exe s:cbang("argument", a:bang)
   else
@@ -115,7 +110,7 @@ endfunction
 
 " operations on list elements {{{
 
-function aplus#AAdd(...)
+function aplus#add(...)
   let l:cmd = "argadd "
   for arg in a:000
     for file in split(expand(arg), "\n")
@@ -127,28 +122,28 @@ function aplus#AAdd(...)
   exe l:cmd
 endfunction
 
-function aplus#AEdit(bang, ...)
+function aplus#edit(bang, ...)
   " adds arguments to list and edits first
   let l:first = split(expand(a:1), "\n")[0]
   let l:idx = index(argv(), l:first)
   if l:idx == -1
     let l:idx = argc()
   endif
-  call call("aplus#AAdd", a:000)
+  call call("aplus#add", a:000)
   exe s:cbang("argument", a:bang)." ".(l:idx + 1)
 endfunction
 
-function aplus#ADel(bang, ...)
+function aplus#delete(bang, ...)
   " deletes argument from list
   " TODO
 endfunction
 
-function aplus#ABufDel(bang, ...)
+function aplus#delete_buf(bang, ...)
   " deletes argument from list and it's corresponding buffer
   " TODO
 endfunction
 
-function aplus#AFileDel(bang, ...)
+function aplus#delete_file(bang, ...)
   " deletes argument from list, it's corresponding buffer and file
   " TODO
 endfunction
@@ -157,7 +152,7 @@ endfunction
 
 " operations on lists {{{
 
-function aplus#ALtoG()
+function aplus#log_to_glob()
   " replaces global with copy of local
   if arglistid() == 0
     throw "Not using local arglist"
@@ -165,12 +160,12 @@ function aplus#ALtoG()
   exe "argglobal ".s:instantiate(argv())
 endfunction
 
-function aplus#AGtoL()
+function aplus#glob_to_loc()
   " replaces local with copy of global
   arglocal
 endfunction
 
-function aplus#AExchange()
+function aplus#exchange()
   " exchanges global and local
   if arglistid() == 0
     throw "Alist isn't local, there is nothing to exchange"
@@ -189,41 +184,40 @@ endfunction
 " commands {{{
 
 command! -count=1 -bang ANext
-      \ call aplus#ANext(<bang>0, <count>)
+      \ call aplus#next(<bang>0, <count>)
 command! -count=1 -bang APrev
-      \ call aplus#APrev(<bang>0, <count>)
-command! -count=0 -bang ASel
-      \ call aplus#ASel(<bang>0, <count>)
-command! -nargs=? -bang ASelN
-      \ call aplus#ASel(<bang>0, 0<f-args>)
+      \ call aplus#prev(<bang>0, <count>)
+command! -count=0 -bang ASelect
+      \ call aplus#select(<bang>0, <count>)
+command! -nargs=? -bang ANSelect
+      \ call aplus#select(<bang>0, 0<f-args>)
 command! -nargs=? -bang -complete=arglist AGo
-      \ call aplus#AGo(<bang>0, <f-args>)
+      \ call aplus#go(<bang>0, <f-args>)
 
 " TODO counts
 command! -nargs=+ -complete=file AAdd
-      \ call aplus#AAdd(<f-args>)
-command! -nargs=+ -complete=buffer AAddBuf
-      \ call aplus#AAdd(<f-args>)
+      \ call aplus#add(<f-args>)
+command! -nargs=+ -complete=buffer ABufAdd
+      \ call aplus#add(<f-args>)
 command! -nargs=+ -bang -complete=file AEdit
-      \ call aplus#AEdit(<bang>0, <f-args>)
-command! -nargs=+ -bang -complete=buffer AEditBuf
-      \ call aplus#AEdit(<bang>0, <f-args>)
+      \ call aplus#edit(<bang>0, <f-args>)
+command! -nargs=+ -bang -complete=buffer ABufEdit
+      \ call aplus#edit(<bang>0, <f-args>)
 
 command! -nargs=* -bang -complete=arglist ADel
-      \ call aplus#ADel(<bang>0, <f-args>)
+      \ call aplus#delete(<bang>0, <f-args>)
 command! -nargs=* -bang -complete=arglist ABufDel
-      \ call aplus#ABufDel(<bang>0, <f-args>)
+      \ call aplus#delete_buf(<bang>0, <f-args>)
 command! -nargs=* -bang -complete=arglist AFileDel
-      \ call aplus#AFileDel(<bang>0, <f-args>)
+      \ call aplus#delete_file(<bang>0, <f-args>)
 
-command! -nargs=0 AList echo aplus#AList()
-command! -nargs=0 AVList echo aplus#AVList()
-command! -nargs=0 AHList echo aplus#AHList()
-command! -nargs=0 AAList echo aplus#AAList()
+command! -nargs=0 AList echo aplus#list()
+command! -nargs=0 AVertList echo aplus#vert_list()
+command! -nargs=0 AHorizList echo aplus#horiz_list()
 
-command! -nargs=0 AGtoL call aplus#AGtoL()
-command! -nargs=0 ALtoG call aplus#ALtoG()
-command! -nargs=0 AExchange call aplus#AExchange()
+command! -nargs=0 AGlobToLoc call aplus#glob_to_loc()
+command! -nargs=0 ALocToGlob call aplus#log_to_glob()
+command! -nargs=0 AExchange call aplus#exchange()
 
 " }}}
 
@@ -233,11 +227,11 @@ command! -nargs=0 AExchange call aplus#AExchange()
 
 map <Plug>ANext :ANext<CR>
 map <Plug>APrev :APrev<CR>
-map <Plug>ASel :ASel<CR>
+map <Plug>ASelect :ASelect<CR>
 map <Plug>AGo :<C-u>AGo<CR>
 map <Plug>A!Next :ANext!<CR>
 map <Plug>A!Prev :APrev!<CR>
-map <Plug>A!Sel :ASel!<CR>
+map <Plug>A!Select :ASelect!<CR>
 map <Plug>A!Go :<C-u>AGo!<CR>
 
 map <Plug>AAdd :<C-u>AAdd<CR>
@@ -250,37 +244,36 @@ map <Plug>A!Del :<C-u>ADel<CR>
 map <Plug>A!DelBuf :<C-u>ADelBuf<CR>
 
 map <Plug>AList :<C-u>AList<CR>
-map <Plug>AVList :<C-u>AVList<CR>
-map <Plug>AHList :<C-u>AHList<CR>
-map <Plug>AAList :<C-u>AAList<CR>
+map <Plug>AVertList :<C-u>AVertList<CR>
+map <Plug>AHorizList :<C-u>AHorizList<CR>
 
-map <Plug>AGtoL :<C-u>AGtoL<CR>
-map <Plug>ALtoG :<C-u>ALtoG<CR>
+map <Plug>AGlobToLoc :<C-u>AGlobToLoc<CR>
+map <Plug>ALocToGlob :<C-u>ALocToGlob<CR>
 map <Plug>AExchange :<C-u>AExchange<CR>
 
 " }}}
 
 " predefined numbers {{{
 
-map <Plug>ASel1 :<C-u>ASelN 1<CR>
-map <Plug>ASel2 :<C-u>ASelN 2<CR>
-map <Plug>ASel3 :<C-u>ASelN 3<CR>
-map <Plug>ASel4 :<C-u>ASelN 4<CR>
-map <Plug>ASel5 :<C-u>ASelN 5<CR>
-map <Plug>ASel6 :<C-u>ASelN 6<CR>
-map <Plug>ASel7 :<C-u>ASelN 7<CR>
-map <Plug>ASel8 :<C-u>ASelN 8<CR>
-map <Plug>ASel9 :<C-u>ASelN 9<CR>
+map <Plug>ASelect1 :<C-u>ANSelect 1<CR>
+map <Plug>ASelect2 :<C-u>ANSelect 2<CR>
+map <Plug>ASelect3 :<C-u>ANSelect 3<CR>
+map <Plug>ASelect4 :<C-u>ANSelect 4<CR>
+map <Plug>ASelect5 :<C-u>ANSelect 5<CR>
+map <Plug>ASelect6 :<C-u>ANSelect 6<CR>
+map <Plug>ASelect7 :<C-u>ANSelect 7<CR>
+map <Plug>ASelect8 :<C-u>ANSelect 8<CR>
+map <Plug>ASelect9 :<C-u>ANSelect 9<CR>
 
-map <Plug>A!Sel1 :<C-u>ASelN! 1<CR>
-map <Plug>A!Sel2 :<C-u>ASelN! 2<CR>
-map <Plug>A!Sel3 :<C-u>ASelN! 3<CR>
-map <Plug>A!Sel4 :<C-u>ASelN! 4<CR>
-map <Plug>A!Sel5 :<C-u>ASelN! 5<CR>
-map <Plug>A!Sel6 :<C-u>ASelN! 6<CR>
-map <Plug>A!Sel7 :<C-u>ASelN! 7<CR>
-map <Plug>A!Sel8 :<C-u>ASelN! 8<CR>
-map <Plug>A!Sel9 :<C-u>ASelN! 9<CR>
+map <Plug>A!Select1 :<C-u>ANSelect! 1<CR>
+map <Plug>A!Select2 :<C-u>ANSelect! 2<CR>
+map <Plug>A!Select3 :<C-u>ANSelect! 3<CR>
+map <Plug>A!Select4 :<C-u>ANSelect! 4<CR>
+map <Plug>A!Select5 :<C-u>ANSelect! 5<CR>
+map <Plug>A!Select6 :<C-u>ANSelect! 6<CR>
+map <Plug>A!Select7 :<C-u>ANSelect! 7<CR>
+map <Plug>A!Select8 :<C-u>ANSelect! 8<CR>
+map <Plug>A!Select9 :<C-u>ANSelect! 9<CR>
 
 " }}}
 
