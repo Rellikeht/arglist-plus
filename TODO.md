@@ -1,3 +1,4 @@
-- generating list from buffers, list (lists?), files, ...
 - argdo (argsdo ?)
-- should there be argdedupe on operations
+- custom completions
+- test `aplus#go`
+- counts on adding and deleting

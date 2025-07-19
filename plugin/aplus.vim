@@ -47,21 +47,28 @@ call s:set_if_not_exist("g:aplus#win_empty", 0)
 
 " information {{{
 
+function aplus#arg_name()
+  " returns filename of current argument
+  return argv()[argidx()]
+endfunction
+
 function aplus#vert_list()
-  " return list representation with each argument on separate line
+  " returns arglist representation with each argument on separate line
   let l:args = argv()
   let l:args[argidx()] = "[".l:args[argidx()]."]"
   return join(l:args, "\n")
 endfunction
 
 function aplus#horiz_list()
-  " return list representation that takes only one line
+  " returns arglist representation with all elements next to each other
   let l:args = argv()
   let l:args[argidx()] = "[".l:args[argidx()]."]"
   return join(l:args, " ")
 endfunction
 
 function aplus#list()
+  " returns arglist reperesentation in horizontal format if it fits
+  " on the screen and in vertical format otherwise
   let l:horizontal = aplus#horiz_list()
   if len(l:horizontal) <= &columns
     return l:horizontal
@@ -74,16 +81,19 @@ endfunction
 " navigation {{{
 
 function aplus#next(bang, n)
+  " moves to n'th (wrapping around) next argument
   let l:n = (argidx() + a:n) % argc()
   exe s:cbang("argument", a:bang)." ".(l:n + 1)
 endfunction
 
 function aplus#prev(bang, n)
+  " moves to n'th (wrapping around) previous argument
   let l:n = (argc() + argidx() - a:n % argc()) % argc()
   exe s:cbang("argument", a:bang)." ".(l:n + 1)
 endfunction
 
 function aplus#select(bang, n=0)
+  " moves to n'th argument
   if a:n == 0
     exe s:cbang("argument", a:bang)
   else
@@ -92,6 +102,7 @@ function aplus#select(bang, n=0)
 endfunction
 
 function aplus#go(bang, name="")
+  " moves to argument with given name
   if a:name == ""
     exe s:cbang("argument", a:bang)
   else
@@ -111,6 +122,7 @@ endfunction
 " operations on list elements {{{
 
 function aplus#add(...)
+  " adds (only not already present) files to arglist
   let l:cmd = "argadd "
   for arg in a:000
     for file in split(expand(arg), "\n")
@@ -123,7 +135,7 @@ function aplus#add(...)
 endfunction
 
 function aplus#edit(bang, ...)
-  " adds arguments to list and edits first
+  " adds (only not already present) files to arglist and edits first
   let l:first = split(expand(a:1), "\n")[0]
   let l:idx = index(argv(), l:first)
   if l:idx == -1
@@ -148,9 +160,20 @@ function aplus#delete_file(bang, ...)
   " TODO
 endfunction
 
+function aplus#move(index, position)
+  " moves element at index to given position in list
+  " TODO
+endfunction
+
 " }}}
 
 " operations on lists {{{
+
+function aplus#define(...)
+  " define list of currently used scope to be list given as parameter
+  %argdel
+  call call("aplus#add", a:000)
+endfunction
 
 function aplus#log_to_glob()
   " replaces global with copy of local
@@ -194,7 +217,6 @@ command! -nargs=? -bang ANSelect
 command! -nargs=? -bang -complete=arglist AGo
       \ call aplus#go(<bang>0, <f-args>)
 
-" TODO counts
 command! -nargs=+ -complete=file AAdd
       \ call aplus#add(<f-args>)
 command! -nargs=+ -complete=buffer ABufAdd
@@ -211,10 +233,22 @@ command! -nargs=* -bang -complete=arglist ABufDel
 command! -nargs=* -bang -complete=arglist AFileDel
       \ call aplus#delete_file(<bang>0, <f-args>)
 
+command! -count=0 AMove
+      \ call aplus#move(<count>, aplus#arg_name())
+command! -nargs=1 -complete=arglist AMoveArg
+      \ call aplus#move(argidx(), <f-args>)
+
+command! -nargs=0 AName echo aplus#arg_name()
 command! -nargs=0 AList echo aplus#list()
 command! -nargs=0 AVertList echo aplus#vert_list()
 command! -nargs=0 AHorizList echo aplus#horiz_list()
 
+command! -nargs=* -complete=file ADefine
+      \ call aplus#define(<f-args>)
+command! -nargs=* -complete=buffer ADefineBuf
+      \ call aplus#define(<f-args>)
+command! -nargs=* -complete=arglist ADefineArgs
+      \ call aplus#define(<f-args>)
 command! -nargs=0 AGlobToLoc call aplus#glob_to_loc()
 command! -nargs=0 ALocToGlob call aplus#log_to_glob()
 command! -nargs=0 AExchange call aplus#exchange()
@@ -243,6 +277,7 @@ map <Plug>ADelBuf :<C-u>ADelBuf<CR>
 map <Plug>A!Del :<C-u>ADel<CR>
 map <Plug>A!DelBuf :<C-u>ADelBuf<CR>
 
+map <Plug>AName :<C-u>AName<CR>
 map <Plug>AList :<C-u>AList<CR>
 map <Plug>AVertList :<C-u>AVertList<CR>
 map <Plug>AHorizList :<C-u>AHorizList<CR>
@@ -274,6 +309,16 @@ map <Plug>A!Select6 :<C-u>ANSelect! 6<CR>
 map <Plug>A!Select7 :<C-u>ANSelect! 7<CR>
 map <Plug>A!Select8 :<C-u>ANSelect! 8<CR>
 map <Plug>A!Select9 :<C-u>ANSelect! 9<CR>
+
+" map <Plug>AMove1 :<C-u>AMove 1<CR>
+" map <Plug>AMove2 :<C-u>AMove 2<CR>
+" map <Plug>AMove3 :<C-u>AMove 3<CR>
+" map <Plug>AMove4 :<C-u>AMove 4<CR>
+" map <Plug>AMove5 :<C-u>AMove 5<CR>
+" map <Plug>AMove6 :<C-u>AMove 6<CR>
+" map <Plug>AMove7 :<C-u>AMove 7<CR>
+" map <Plug>AMove8 :<C-u>AMove 8<CR>
+" map <Plug>AMove9 :<C-u>AMove 9<CR>
 
 " }}}
 
