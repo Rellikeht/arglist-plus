@@ -458,10 +458,9 @@ if s:check_var("aplus#dedupe_on_start", ["g"])
   argdedupe
 endif
 
-autocmd BufDelete * call
-      \ s:buf_del_hook(fnameescape(expand("<afile>")))
-autocmd TabNew * call s:tab_arglist()
-autocmd WinNew * call s:win_arglist()
+" autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
+" autocmd TabNew * call s:tab_arglist()
+" autocmd WinNew * call s:win_arglist()
 if s:check_var("aplus#new_local", ["g"])
   autocmd VimEnter * arglocal
 endif
