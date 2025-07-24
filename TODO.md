@@ -1,7 +1,7 @@
-- rename file
+- replace with buf (file ?)
+- remove arguments on buffer deletion
 - custom completions
-- counts on adding and deleting
-- command-addr
 - file under cursor
+- rename file (?)
 - argdo (argsdo ?)
 - netrw (?)

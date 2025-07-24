@@ -11,8 +11,8 @@ endfunction
 function s:check_var(name, scopes)
   for scope in a:scopes
     let l:var = scope.":".a:name
-    if exists(l:var) && eval(l:var)
-      return v:true
+    if exists(l:var)
+      return eval(l:var)
     endif
   endfor
   return v:false
@@ -40,17 +40,17 @@ function s:expand_args_loop(cmd, list)
   endfor
 endfunction
 
-function s:rem_and_del(bang, file="")
-  let l:file = a:file
-  if a:file == ""
-    let l:file = fnameescape(expand("%"))
-  endif
-  exe s:cbang("bwipeout", a:bang)." ".l:file
-  call delete(l:file)
+function s:windo_stay(expr)
+  let l:winnr = winnr()
+  exe "windo ".a:expr
+  exe l:winnr."wincmd w"
 endfunction
 
-command! -bang -nargs=? -complete=buffer DelFileAndBuf
-      \ call <SID>rem_and_del(<bang>0, <f-args>)
+function s:tabdo_stay(expr)
+  let l:tabnr = tabpagenr()
+  exe "tabdo ".a:expr
+  exe "tabnext ".l:tabnr
+endfunction
 
 " }}}
 
@@ -62,12 +62,14 @@ endif
 let g:loaded_aplus = 1
 
 call s:set_if_not_exist("g:aplus#dedupe_on_start", 1)
-
-" TODO local/global, fresh/copied
-call s:set_if_not_exist("g:aplus#tab_local", 1)
-call s:set_if_not_exist("g:aplus#tab_empty", 0)
-call s:set_if_not_exist("g:aplus#win_local", 0)
-call s:set_if_not_exist("g:aplus#win_empty", 0)
+" on bufdelete remove buffer from all arglists
+call s:set_if_not_exist("g:aplus#buf_del_hook", 1)
+" tab/win
+call s:set_if_not_exist("g:aplus#new_tab", 0)
+" local/global
+call s:set_if_not_exist("g:aplus#new_local", 1)
+" fresh/copied
+call s:set_if_not_exist("g:aplus#new_copy", 0)
 
 " }}}
 
@@ -186,12 +188,6 @@ function aplus#wipeout_buf(bang, ...)
   call s:expand_args_loop(s:cbang("bwipeout", a:bang), a:000)
 endfunction
 
-function aplus#delete_file(bang, ...)
-  " deletes argument from list, it's corresponding buffer and file
-  call call("aplus#delete", insert(deepcopy(a:000), a:bang))
-  call s:expand_args_loop(s:cbang("DelFileAndBuf", a:bang), a:000)
-endfunction
-
 function aplus#move(from, to)
   " moves element at a:from to given a:to position in list
   let l:argv = argv()
@@ -204,6 +200,11 @@ function aplus#swap(from, to)
   let l:argv = argv()
   " TODO
   call aplus#define(l:argv)
+endfunction
+
+function aplus#replace(file, idx=-1)
+  " replaces argument (idx) with given file
+  " TODO
 endfunction
 
 " }}}
@@ -267,13 +268,13 @@ command! -nargs=? -bang -complete=arglist AGo
 " Add file(s) to arglist
 command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
       \ call aplus#add(<count>, <f-args>)
-command! -range=% -addr=arguments -nargs=+ -complete=buffer ABufAdd
+command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
       \ call aplus#add(<count>, <f-args>)
 
 " Add file(s) to arglist and edit (first)
 command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
       \ call aplus#edit(<count>, <bang>0, <f-args>)
-command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer ABufEdit
+command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
       \ call aplus#edit(<count>, <bang>0, <f-args>)
 
 " Remove file from arglist
@@ -285,9 +286,6 @@ command! -nargs=* -bang -complete=arglist ABufDel
 " Remove file from arglist and wipe out it's buffer
 command! -nargs=* -bang -complete=arglist ABufWipe
       \ call aplus#wipeout_buf(<bang>0, <f-args>)
-" Remove file from arglist, buffer list and delete it from disk
-command! -nargs=* -bang -complete=arglist AFileDel
-      \ call aplus#delete_file(<bang>0, <f-args>)
 
 " " Move current file to position of given file
 " command! -nargs=1 -complete=arglist AMoveTo
@@ -356,11 +354,9 @@ map <Plug>!AEdit :<C-u>AEdit!<CR>
 map <Plug>ADel :<C-u>ADel<CR>
 map <Plug>ABufDel :<C-u>ABufDel<CR>
 map <Plug>ABufWipe :<C-u>ABufWipe<CR>
-map <Plug>AFileDel :<C-u>AFileDel<CR>
 map <Plug>!ADel :<C-u>ADel!<CR>
 map <Plug>!ABufDel :<C-u>ABufDel!<CR>
 map <Plug>!ABufWipe :<C-u>ABufWipe!<CR>
-map <Plug>!AFileDel :<C-u>AFileDel!<CR>
 
 map <Plug>AGlobToLoc :<C-u>AGlobToLoc<CR>
 map <Plug>ALocToGlob :<C-u>ALocToGlob<CR>
@@ -414,21 +410,60 @@ map <Plug>!ASelect-9 :<C-u>exe "ASelect! ".<SID>mod_argc(-9)<CR>
 
 " setup {{{
 
-" TODO how to properly copy when needed
-" function s:tab_arglist()
-"   if s:check_var("aplus#tab_local", ["t", "g"])
-"     arglocal
+function s:local_arglist(scopes)
+  if s:check_var("aplus#new_local", a:scopes)
+    " TODO
+    " arglocal
+    if s:check_var("aplus#new_copy", a:scopes)
+      " TODO
+      " echom winnr("#").
+    endif
 "     if s:check_var("aplus#tab_empty", ["t", "g"])
 "       %argd
 "     endif
-"   endif
-" endfunction
+  endif
+endfunction
 
-" autocmd TabNew * call s:tab_arglist()
-" autocmd WinNew * call s:win_arglist()
+function s:tab_arglist()
+  if !s:check_var("aplus#new_tab", ["t", "g"]) ||
+        \ arglistid() != 0
+    return
+  endif
+  call s:local_arglist(["t", "g"])
+endfunction
+
+function s:win_arglist()
+  if s:check_var("aplus#new_tab", ["t", "g"]) ||
+        \ arglistid() != 0
+    return
+  endif
+  call s:local_arglist(["w", "t", "g"])
+endfunction
+
+function s:win_buf_del(file)
+  if s:check_var("aplus#buf_del_hook", ["b", "w", "t", "g"])
+    echo "Deleting ".a:file." in ".win_getid()
+  endif
+endfunction
+
+function s:buf_del_hook(file)
+  " Sometimes this is run with empty name when no buffer is deleted
+  if a:file == ""
+    return
+  endif
+  call <SID>tabdo_stay("call s:windo_stay(\"call s:win_buf_del('".a:file."')\")")
+endfunction
 
 if s:check_var("aplus#dedupe_on_start", ["g"])
   argdedupe
+endif
+
+autocmd BufDelete * call
+      \ s:buf_del_hook(fnameescape(expand("<afile>")))
+autocmd TabNew * call s:tab_arglist()
+autocmd WinNew * call s:win_arglist()
+if s:check_var("aplus#new_local", ["g"])
+  autocmd VimEnter * arglocal
 endif
 
 " }}}
