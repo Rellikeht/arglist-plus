@@ -496,7 +496,7 @@ endfunction
 function s:win_buf_del(file) abort
   if s:check_var("aplus#buf_del_hook", ["b", "w", "t", "g"])
     try
-      call aplus#delete(1, a:file)
+      exe "argdelete ".fnameescape(a:file)
     catch
     endtry
   endif
@@ -510,7 +510,7 @@ function s:buf_del_hook(file) abort
   if s:check_var("aplus#buf_del_global", ["g"])
     try
       call aplus#exchange()
-      call aplus#delete(1, a:file)
+      exe "argdelete ".fnameescape(a:file)
       call aplus#exchange()
     catch
     endtry
@@ -522,12 +522,11 @@ if s:check_var("aplus#dedupe_on_start", ["g"])
   argdedupe
 endif
 
-" TODO fix hooks after function fixes
-" autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
-" " autocmd TabNew * call s:tab_arglist()
-" " autocmd WinNew * call s:win_arglist()
-" if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
-"   autocmd VimEnter * arglocal
-" endif
+autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
+" autocmd TabNew * call s:tab_arglist()
+" autocmd WinNew * call s:win_arglist()
+if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
+  autocmd VimEnter * arglocal
+endif
 
 " }}}
