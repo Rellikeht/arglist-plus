@@ -1,14 +1,14 @@
 " helpers {{{
 
-function s:cbang(command, bang)
+function s:cbang(command, bang) abort
   return a:command.(a:bang ? "!" : "")
 endfunction
 
-function s:mod_argc(n)
+function s:mod_argc(n) abort
   return (argc() + a:n % argc()) % argc()
 endfunction
 
-function s:check_var(name, scopes)
+function s:check_var(name, scopes) abort
   for scope in a:scopes
     let l:var = scope.":".a:name
     if exists(l:var)
@@ -18,17 +18,25 @@ function s:check_var(name, scopes)
   return 0
 endfunction
 
-function s:instantiate(args)
-  return join(map(a:args, 'fnameescape(v:val)'), " ")
+function s:cescape(...) abort
+  let l:args = deepcopy(a:000)
+  call map(l:args, 'escape(v:val, " ")')
+  return l:args
 endfunction
 
-function s:set_if_not_exist(name, value)
+function s:instantiate(args) abort
+  let l:args = deepcopy(a:args)
+  call map(l:args, 'fnameescape(v:val)')
+  return join(l:args, " ")
+endfunction
+
+function s:set_if_not_exist(name, value) abort
     if !exists(a:name)
       exe "let ".a:name." = ".a:value
     endif
 endfunction
 
-function s:expand_args_loop(cmd, list)
+function s:expand_args_loop(cmd, list) abort
   if len(a:list) == 0
     exe a:cmd." ".fnameescape(expand("%"))
     return
@@ -40,19 +48,19 @@ function s:expand_args_loop(cmd, list)
   endfor
 endfunction
 
-function s:windo_stay(expr)
+function s:windo_stay(expr) abort
   let l:winnr = winnr()
   exe "windo ".a:expr
   exe l:winnr."wincmd w"
 endfunction
 
-function s:tabdo_stay(expr)
+function s:tabdo_stay(expr) abort
   let l:tabnr = tabpagenr()
   exe "tabdo ".a:expr
   exe "tabnext ".l:tabnr
 endfunction
 
-function s:del_with_next(bang, func, ...)
+function s:del_with_next(bang, func, ...) abort
   let l:args = deepcopy(a:000)
   let l:success = 0
   try
@@ -96,7 +104,7 @@ call s:set_if_not_exist("g:aplus#new_copy", 0)
 
 " information {{{
 
-function aplus#arg_name()
+function aplus#arg_name() abort
   " returns filename of current argument
   let l:args = argv()
   if len(l:args) == 0
@@ -105,7 +113,7 @@ function aplus#arg_name()
   return l:args[argidx()]
 endfunction
 
-function aplus#vert_list()
+function aplus#vert_list() abort
   " returns arglist representation with each argument on separate line
   let l:args = argv()
   if len(l:args) == 0
@@ -115,7 +123,7 @@ function aplus#vert_list()
   return join(l:args, "\n")
 endfunction
 
-function aplus#horiz_list()
+function aplus#horiz_list() abort
   " returns arglist representation with all elements next to each other
   let l:args = argv()
   if len(l:args) == 0
@@ -125,7 +133,7 @@ function aplus#horiz_list()
   return join(l:args, " ")
 endfunction
 
-function aplus#list()
+function aplus#list() abort
   " returns arglist reperesentation in horizontal format if it fits
   " on the screen and in vertical format otherwise
   let l:horizontal = aplus#horiz_list()
@@ -139,17 +147,17 @@ endfunction
 
 " navigation {{{
 
-function aplus#next(bang, n)
+function aplus#next(bang, n) abort
   " moves to n'th (wrapping around) next argument
   exe s:cbang("argument", a:bang)." ".(s:mod_argc(argidx() + a:n) + 1)
 endfunction
 
-function aplus#prev(bang, n)
+function aplus#prev(bang, n) abort
   " moves to n'th (wrapping around) previous argument
   exe s:cbang("argument", a:bang)." ".(s:mod_argc(argidx() - a:n) + 1)
 endfunction
 
-function aplus#select(bang, n=0)
+function aplus#select(bang, n=0) abort
   " moves to n'th argument
   if a:n == 0
     exe s:cbang("argument", a:bang)
@@ -158,7 +166,7 @@ function aplus#select(bang, n=0)
   endif
 endfunction
 
-function aplus#go(bang, name="")
+function aplus#go(bang, name="") abort
   " moves to argument with given name
   if a:name == ""
     exe s:cbang("argument", a:bang)
@@ -178,50 +186,51 @@ endfunction
 
 " operations on list elements {{{
 
-function aplus#add(place, ...)
+function aplus#add(place, files) abort
   " adds (only not already present) files to arglist
-  exe a:place."argadd ".join(a:000, " ")
+  exe a:place."argadd ".join(a:files, " ")
   argdedupe
 endfunction
 
-function aplus#edit(place, bang, ...)
+function aplus#edit(place, bang, files) abort
   " adds (only not already present) files to arglist and edits first
-  exe a:place.s:cbang("argedit", a:bang)." ".join(a:000, " ")
+  exe a:place.s:cbang("argedit", a:bang)." ".join(a:files, " ")
   argdedupe
 endfunction
 
-function aplus#delete(bang, ...)
-  " deletes argument from list
-  exe s:cbang("argdelete", a:bang)." ".join(a:000, " ")
+function aplus#delete(bang, files) abort
+  " deletes arguments from list
+  exe s:cbang("argdelete", a:bang)." ".join(a:files, " ")
 endfunction
 
-function aplus#delete_buf(bang, ...)
+function aplus#delete_buf(bang, files) abort
   " deletes argument from list and it's corresponding buffer
-  call call("aplus#delete", insert(deepcopy(a:000), a:bang))
-  call s:expand_args_loop(s:cbang("bdelete", a:bang), a:000)
+  call aplus#delete(a:bang, a:files)
+  call s:expand_args_loop(s:cbang("bdelete", a:bang), a:files)
 endfunction
 
-function aplus#wipeout_buf(bang, ...)
+function aplus#wipeout_buf(bang, files) abort
   " deletes argument from list and wipes out it's corresponding buffer
-  call call("aplus#delete", insert(deepcopy(a:000), a:bang))
-  call s:expand_args_loop(s:cbang("bwipeout", a:bang), a:000)
+  call aplus#delete(a:bang, a:files)
+  call s:expand_args_loop(s:cbang("bwipeout", a:bang), a:files)
 endfunction
 
-function aplus#move(from, to)
+function aplus#move(from, to) abort
   " moves element at a:from to given a:to position in list
   let l:argv = argv()
-  " TODO
-  call aplus#define(l:argv)
+  let l:arg = remove(l:argv, a:from)
+  call insert(l:argv, l:arg, a:to)
+  call call("aplus#define", l:argv)
 endfunction
 
-function aplus#swap(from, to)
+function aplus#swap(from, to) abort
   " swaps element at a:from with file at a:to position in list
   let l:argv = argv()
   " TODO
   call aplus#define(l:argv)
 endfunction
 
-function aplus#replace(file, idx=-1)
+function aplus#replace(file, idx=-1) abort
   " replaces argument (idx) with given file
   " TODO
 endfunction
@@ -230,13 +239,13 @@ endfunction
 
 " operations on lists {{{
 
-function aplus#define(...)
+function aplus#define(files) abort
   " define list of currently used scope to be list given as parameter
   %argdel
-  call call("aplus#add", a:000)
+  call aplus#add(0, a:files)
 endfunction
 
-function aplus#log_to_glob()
+function aplus#log_to_glob() abort
   " replaces global with copy of local
   if arglistid() == 0
     throw "Not using local arglist"
@@ -244,12 +253,12 @@ function aplus#log_to_glob()
   exe "argglobal ".s:instantiate(argv())
 endfunction
 
-function aplus#glob_to_loc()
+function aplus#glob_to_loc() abort
   " replaces local with copy of global
   arglocal
 endfunction
 
-function aplus#exchange()
+function aplus#exchange() abort
   " exchanges global and local
   if arglistid() == 0
     throw "Not using local arglist, there is nothing to exchange"
@@ -286,33 +295,34 @@ command! -nargs=? -bang -complete=arglist AGo
 
 " Add file(s) to arglist
 command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
-      \ call aplus#add(<count>, <f-args>)
+      \ call aplus#add(<count>, <SID>cescape(<f-args>))
 command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
-      \ call aplus#add(<count>, <f-args>)
+      \ call aplus#add(<count>, <SID>cescape(<f-args>))
 
 " Add file(s) to arglist and edit (first)
 command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
       \ call aplus#edit(<count>, <bang>0, <f-args>)
+      " \ call aplus#edit(<count>, <bang>0, <SID>cescape(<f-args>))
 command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
-      \ call aplus#edit(<count>, <bang>0, <f-args>)
+      \ call aplus#edit(<count>, <bang>0, <SID>cescape(<f-args>))
 
 " Remove file from arglist
 command! -nargs=* -bang -complete=arglist ADel
-      \ call aplus#delete(<bang>0, <f-args>)
+      \ call aplus#delete(<bang>0, <SID>cescape(<f-args>))
 " Remove file from arglist and delete it's buffer
 command! -nargs=* -bang -complete=arglist ABufDel
-      \ call aplus#delete_buf(<bang>0, <f-args>)
+      \ call aplus#delete_buf(<bang>0, <SID>cescape(<f-args>))
 " Remove file from arglist and wipe out it's buffer
 command! -nargs=* -bang -complete=arglist ABufWipe
-      \ call aplus#wipeout_buf(<bang>0, <f-args>)
+      \ call aplus#wipeout_buf(<bang>0, <SID>cescape(<f-args>))
 
 " versions that argedit after deleting
 command! -nargs=* -bang -complete=arglist ADeln
-      \ call <SID>del_with_next(<bang>0, "aplus#delete", <f-args>)
+      \ call <SID>del_with_next(<bang>0, "aplus#delete", <SID>cescape(<f-args>))
 command! -nargs=* -bang -complete=arglist ABufDeln
-      \ call <SID>del_with_next(<bang>0, "aplus#delete_buf", <f-args>)
+      \ call <SID>del_with_next(<bang>0, "aplus#delete_buf", <SID>cescape(<f-args>))
 command! -nargs=* -bang -complete=arglist ABufWipen
-      \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <f-args>)
+      \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <SID>cescape(<f-args>))
 
 
 " " Move current file to position of given file
@@ -340,11 +350,18 @@ command! -nargs=* -bang -complete=arglist ABufWipen
 "       \ call aplus#swap(<f-args>)
 
 command! -nargs=* -complete=file ADefine
-      \ call aplus#define(<f-args>)
+      \ call aplus#define(<SID>cescape(<f-args>))
 command! -nargs=* -complete=buffer ADefineBuf
-      \ call aplus#define(<f-args>)
+      \ call aplus#define(<SID>cescape(<f-args>))
 command! -nargs=* -complete=arglist ADefineArgs
-      \ call aplus#define(<f-args>)
+      \ call aplus#define(<SID>cescape(<f-args>))
+
+command! -nargs=* -bang -complete=file ADefineGo
+      \ call aplus#define(<SID>cescape(<f-args>))|call aplus#select(<bang>0)
+command! -nargs=* -bang -complete=buffer ADefineGoBuf
+      \ call aplus#define(<SID>cescape(<f-args>))|call aplus#select(<bang>0)
+command! -nargs=* -bang -complete=arglist ADefineGoArgs
+      \ call aplus#define(<SID>cescape(<f-args>))|call aplus#select(<bang>0)
 
 command! -nargs=0 AGlobToLoc call aplus#glob_to_loc()
 command! -nargs=0 ALocToGlob call aplus#log_to_glob()
@@ -438,7 +455,7 @@ map <Plug>!ASelect-9 :<C-u>exe "ASelect! ".<SID>mod_argc(-9)<CR>
 
 " setup {{{
 
-function s:local_arglist(scopes)
+function s:local_arglist(scopes) abort
   if s:check_var("aplus#new_local", a:scopes)
     " TODO
     " arglocal
@@ -452,7 +469,7 @@ function s:local_arglist(scopes)
   endif
 endfunction
 
-function s:tab_arglist()
+function s:tab_arglist() abort
   if !s:check_var("aplus#new_tab", ["t", "g"]) ||
         \ arglistid() != 0
     return
@@ -460,7 +477,7 @@ function s:tab_arglist()
   call s:local_arglist(["t", "g"])
 endfunction
 
-function s:win_arglist()
+function s:win_arglist() abort
   if s:check_var("aplus#new_tab", ["t", "g"]) ||
         \ arglistid() != 0
     return
@@ -468,13 +485,16 @@ function s:win_arglist()
   call s:local_arglist(["w", "t", "g"])
 endfunction
 
-function s:win_buf_del(file)
+function s:win_buf_del(file) abort
   if s:check_var("aplus#buf_del_hook", ["b", "w", "t", "g"])
-    call aplus#delete(1, a:file)
+    try
+      call aplus#delete(1, a:file)
+    catch
+    endtry
   endif
 endfunction
 
-function s:buf_del_hook(file)
+function s:buf_del_hook(file) abort
   " Sometimes this is run with empty name when no buffer is deleted
   if a:file == "" || match(a:file, "^term://") != -1
     return
@@ -494,11 +514,12 @@ if s:check_var("aplus#dedupe_on_start", ["g"])
   argdedupe
 endif
 
-autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
-" autocmd TabNew * call s:tab_arglist()
-" autocmd WinNew * call s:win_arglist()
-if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
-  autocmd VimEnter * arglocal
-endif
+" TODO fix hooks after function fixes
+" autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
+" " autocmd TabNew * call s:tab_arglist()
+" " autocmd WinNew * call s:win_arglist()
+" if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
+"   autocmd VimEnter * arglocal
+" endif
 
 " }}}
