@@ -15,7 +15,7 @@ function s:check_var(name, scopes)
       return eval(l:var)
     endif
   endfor
-  return v:false
+  return 0
 endfunction
 
 function s:instantiate(args)
@@ -50,6 +50,23 @@ function s:tabdo_stay(expr)
   let l:tabnr = tabpagenr()
   exe "tabdo ".a:expr
   exe "tabnext ".l:tabnr
+endfunction
+
+function s:del_with_next(bang, func, ...)
+  let l:args = deepcopy(a:000)
+  let l:success = 0
+  try
+    call call(a:func, insert(l:args, a:bang))
+    let l:success = 1
+  endtry
+  if !l:success
+    return
+  endif
+  if argc() > 0
+    call aplus#select(a:bang)
+  else
+    exe s:cbang("bnext", a:bang)
+  endif
 endfunction
 
 " }}}
@@ -288,6 +305,15 @@ command! -nargs=* -bang -complete=arglist ABufDel
 " Remove file from arglist and wipe out it's buffer
 command! -nargs=* -bang -complete=arglist ABufWipe
       \ call aplus#wipeout_buf(<bang>0, <f-args>)
+
+" versions that argedit after deleting
+command! -nargs=* -bang -complete=arglist ADeln
+      \ call <SID>del_with_next(<bang>0, "aplus#delete", <f-args>)
+command! -nargs=* -bang -complete=arglist ABufDeln
+      \ call <SID>del_with_next(<bang>0, "aplus#delete_buf", <f-args>)
+command! -nargs=* -bang -complete=arglist ABufWipen
+      \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <f-args>)
+
 
 " " Move current file to position of given file
 " command! -nargs=1 -complete=arglist AMoveTo
