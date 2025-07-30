@@ -77,6 +77,14 @@ function s:del_with_next(bang, func, ...) abort
   endif
 endfunction
 
+function aplus#complete(lead, cmdline, cursorpos) abort
+  " Completes files from arglist
+  " TODO is this really enough
+  let l:comps = deepcopy(getcompletion(a:lead, "arglist"))
+  call map(l:comps, "fnameescape(v:val)")
+  return l:comps
+endfunction
+
 " }}}
 
 " settings {{{
@@ -307,34 +315,34 @@ command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
       \ call aplus#edit(<count>, <bang>0, <SID>cescape(<f-args>))
 
 " Remove file from arglist
-command! -nargs=* -bang -complete=arglist ADel
+command! -nargs=* -bang -complete=customlist,aplus#complete ADel
       \ call aplus#delete(<bang>0, <SID>cescape(<f-args>))
 " Remove file from arglist and delete it's buffer
-command! -nargs=* -bang -complete=arglist ABufDel
+command! -nargs=* -bang -complete=customlist,aplus#complete ABufDel
       \ call aplus#delete_buf(<bang>0, <SID>cescape(<f-args>))
 " Remove file from arglist and wipe out it's buffer
-command! -nargs=* -bang -complete=arglist ABufWipe
+command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipe
       \ call aplus#wipeout_buf(<bang>0, <SID>cescape(<f-args>))
 
 " versions that argedit after deleting
-command! -nargs=* -bang -complete=arglist ADeln
+command! -nargs=* -bang -complete=customlist,aplus#complete ADeln
       \ call <SID>del_with_next(<bang>0, "aplus#delete", <SID>cescape(<f-args>))
-command! -nargs=* -bang -complete=arglist ABufDeln
+command! -nargs=* -bang -complete=customlist,aplus#complete ABufDeln
       \ call <SID>del_with_next(<bang>0, "aplus#delete_buf", <SID>cescape(<f-args>))
-command! -nargs=* -bang -complete=arglist ABufWipen
+command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipen
       \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <SID>cescape(<f-args>))
 
 
 " " Move current file to position of given file
-" command! -nargs=1 -complete=arglist AMoveTo
+" command! -nargs=1 -complete=customlist,aplus#complete AMoveTo
 "       \ call aplus#move(argidx(), <f-args>)
 " " Swap current file with given file
-" command! -nargs=1 -complete=arglist ASwapWith
+" command! -nargs=1 -complete=customlist,aplus#complete ASwapWith
 "       \ call aplus#swap(argidx(), <f-args>)
 
-" " Move current file to position given as count or argument
-" command! -count=0 -nargs=? AMoveToN
-"       \ call aplus#move(argidx(), <count> || 0<f-args>)
+" Move current file to position given as count or argument
+command! -count=0 -nargs=? AMoveToN
+      \ call aplus#move(argidx(), <count> || 0<f-args>)
 " " Swap current file with file at position given as count or argument
 " command! -count=0 -nargs=? ASwapWithN
 "       \ call aplus#swap(argidx(), <count> || 0<f-args>)
@@ -343,24 +351,24 @@ command! -nargs=* -bang -complete=arglist ABufWipen
 " command! -count=1 -nargs=1 AMoveN
 "       \ call aplus#move(<count>, <f-args>)
 " " Move first file to position of second file
-" command! -nargs=+ -complete=arglist AMove
+" command! -nargs=+ -complete=customlist,aplus#complete AMove
 "       \ call aplus#move(<f-args>)
 " " Swap current file with file at position given as count or argument
-" command! -nargs=+ -complete=arglist ASwap
+" command! -nargs=+ -complete=customlist,aplus#complete ASwap
 "       \ call aplus#swap(<f-args>)
 
 command! -nargs=* -complete=file ADefine
       \ call aplus#define(<SID>cescape(<f-args>))
 command! -nargs=* -complete=buffer ADefineBuf
       \ call aplus#define(<SID>cescape(<f-args>))
-command! -nargs=* -complete=arglist ADefineArgs
+command! -nargs=* -complete=customlist,aplus#complete ADefineArgs
       \ call aplus#define(<SID>cescape(<f-args>))
 
 command! -nargs=* -bang -complete=file ADefineGo
       \ call aplus#define(<SID>cescape(<f-args>))|call aplus#select(<bang>0)
 command! -nargs=* -bang -complete=buffer ADefineGoBuf
       \ call aplus#define(<SID>cescape(<f-args>))|call aplus#select(<bang>0)
-command! -nargs=* -bang -complete=arglist ADefineGoArgs
+command! -nargs=* -bang -complete=customlist,aplus#complete ADefineGoArgs
       \ call aplus#define(<SID>cescape(<f-args>))|call aplus#select(<bang>0)
 
 command! -nargs=0 AGlobToLoc call aplus#glob_to_loc()
