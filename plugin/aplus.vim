@@ -62,8 +62,10 @@ endif
 let g:loaded_aplus = 1
 
 call s:set_if_not_exist("g:aplus#dedupe_on_start", 1)
-" on bufdelete remove buffer from all arglists
+" on bufdelete remove buffer from all local arglists
 call s:set_if_not_exist("g:aplus#buf_del_hook", 1)
+" delete also from global list
+call s:set_if_not_exist("g:aplus#buf_del_global", 0)
 " tab/win
 call s:set_if_not_exist("g:aplus#new_tab", 0)
 " local/global
@@ -442,14 +444,22 @@ endfunction
 
 function s:win_buf_del(file)
   if s:check_var("aplus#buf_del_hook", ["b", "w", "t", "g"])
-    echo "Deleting ".a:file." in ".win_getid()
+    call aplus#delete(1, a:file)
   endif
 endfunction
 
 function s:buf_del_hook(file)
   " Sometimes this is run with empty name when no buffer is deleted
-  if a:file == ""
+  if a:file == "" || match(a:file, "^term://") != -1
     return
+  endif
+  if s:check_var("aplus#buf_del_global", ["g"])
+    try
+      call aplus#exchange()
+      call aplus#delete(1, a:file)
+      call aplus#exchange()
+    catch
+    endtry
   endif
   call <SID>tabdo_stay("call s:windo_stay(\"call s:win_buf_del('".a:file."')\")")
 endfunction
@@ -458,10 +468,10 @@ if s:check_var("aplus#dedupe_on_start", ["g"])
   argdedupe
 endif
 
-" autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
+autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
 " autocmd TabNew * call s:tab_arglist()
 " autocmd WinNew * call s:win_arglist()
-if s:check_var("aplus#new_local", ["g"])
+if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
   autocmd VimEnter * arglocal
 endif
 
