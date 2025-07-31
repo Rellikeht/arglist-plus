@@ -24,10 +24,14 @@ function s:cescape(...) abort
   return l:args
 endfunction
 
-function s:instantiate(args) abort
+function s:escaped_args(args) abort
   let l:args = deepcopy(a:args)
   call map(l:args, 'fnameescape(v:val)')
-  return join(l:args, " ")
+  return l:args
+endfunction
+
+function s:instantiate(args) abort
+  return join(s:escped_args(a:args), " ")
 endfunction
 
 function s:set_if_not_exist(name, value) abort
@@ -79,7 +83,6 @@ endfunction
 
 function aplus#complete(lead, cmdline, cursorpos) abort
   " Completes files from arglist
-  " TODO is this really enough
   let l:comps = deepcopy(getcompletion(a:lead, "arglist"))
   call map(l:comps, "fnameescape(v:val)")
   return l:comps
@@ -114,31 +117,31 @@ call s:set_if_not_exist("g:aplus#new_copy", 0)
 
 function aplus#arg_name() abort
   " returns filename of current argument
-  let l:args = argv()
-  if len(l:args) == 0
+  let l:argv = argv()
+  if len(l:argv) == 0
     return ""
   endif
-  return l:args[argidx()]
+  return l:argv[argidx()]
 endfunction
 
 function aplus#vert_list() abort
   " returns arglist representation with each argument on separate line
-  let l:args = argv()
-  if len(l:args) == 0
+  let l:argv = argv()
+  if len(l:argv) == 0
     return ""
   endif
-  let l:args[argidx()] = "[".l:args[argidx()]."]"
-  return join(l:args, "\n")
+  let l:argv[argidx()] = "[ ".l:argv[argidx()]." ]"
+  return join(l:argv, "\n")
 endfunction
 
 function aplus#horiz_list() abort
   " returns arglist representation with all elements next to each other
-  let l:args = argv()
-  if len(l:args) == 0
+  let l:argv = s:escaped_args(argv())
+  if len(l:argv) == 0
     return ""
   endif
-  let l:args[argidx()] = "[".l:args[argidx()]."]"
-  return join(l:args, " ")
+  let l:argv[argidx()] = "[".l:argv[argidx()]."]"
+  return join(l:argv, " ")
 endfunction
 
 function aplus#list() abort
@@ -149,6 +152,18 @@ function aplus#list() abort
     return l:horizontal
   endif
   return aplus#vert_list()
+endfunction
+
+function aplus#echo_output(bang, function) abort
+  " if bang is given :echo `funtion` output otherwise
+  " :echomsg it (with proper newline handling)
+  if a:bang
+    for line in split(call(a:function, []), "\n")
+      echom line
+    endfor
+  else
+    echo call(a:function, [])
+  endif
 endfunction
 
 " }}}
@@ -284,10 +299,14 @@ endfunction
 
 " commands {{{
 
-command! -nargs=0 AName echo aplus#arg_name()
-command! -nargs=0 AList echo aplus#list()
-command! -nargs=0 AVertList echo aplus#vert_list()
-command! -nargs=0 AHorizList echo aplus#horiz_list()
+command! -nargs=0 -bang AName
+      \ call aplus#echo_output(<bang>0, "aplus#arg_name")
+command! -nargs=0 -bang AList
+      \ call aplus#echo_output(<bang>0, "aplus#list")
+command! -nargs=0 -bang AVertList
+      \ call aplus#echo_output(<bang>0, "aplus#vert_list")
+command! -nargs=0 -bang AHorizList
+      \ call aplus#echo_output(<bang>0, "aplus#horiz_list")
 
 command! -count=1 -nargs=0 -bang ANext
       \ call aplus#next(<bang>0, <count>)
