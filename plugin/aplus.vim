@@ -81,6 +81,18 @@ function s:del_with_next(bang, func, ...) abort
   endif
 endfunction
 
+function s:norm_apos(pos) abort
+  " converts position from [1, argc()] and 0 for argidx() to [0, argc())
+  if a:pos == 0
+    return argidx()
+  endif
+  return a:pos - 1
+endfunction
+
+function s:arg_index(name) abort
+  return index(argv(), a:name)
+endfunction
+
 function aplus#complete(lead, cmdline, cursorpos) abort
   " Completes files from arglist
   let l:comps = deepcopy(getcompletion(a:lead, "arglist"))
@@ -101,7 +113,9 @@ call s:set_if_not_exist("g:aplus#dedupe_on_start", 1)
 " on bufdelete remove buffer from all local arglists
 call s:set_if_not_exist("g:aplus#buf_del_hook", 1)
 " delete also from global list
-call s:set_if_not_exist("g:aplus#buf_del_global", 0)
+call s:set_if_not_exist("g:aplus#buf_del_global", 1)
+
+" TODO describe
 " tab/win
 call s:set_if_not_exist("g:aplus#new_tab", 0)
 " local/global
@@ -135,13 +149,14 @@ function aplus#vert_list() abort
 endfunction
 
 function aplus#horiz_list() abort
-  " returns arglist representation with all elements next to each other
+  " returns arglist representation with all elements next to
+  " each other (and escaped)
   let l:argv = s:escaped_args(argv())
   if len(l:argv) == 0
     return ""
   endif
   let l:argv[argidx()] = "[".l:argv[argidx()]."]"
-  return join(l:argv, " ")
+  return join(l:argv, "  ")
 endfunction
 
 function aplus#list() abort
@@ -155,7 +170,7 @@ function aplus#list() abort
 endfunction
 
 function aplus#echo_output(bang, function) abort
-  " if bang is given :echo `funtion` output otherwise
+  " if bang is given :echo a:funtion output otherwise
   " :echomsg it (with proper newline handling)
   if a:bang
     for line in split(call(a:function, []), "\n")
@@ -170,12 +185,12 @@ endfunction
 
 " navigation {{{
 
-function aplus#next(bang, n) abort
+function aplus#next(bang, n=1) abort
   " moves to n'th (wrapping around) next argument
   exe s:cbang("argument", a:bang)." ".(s:mod_argc(argidx() + a:n) + 1)
 endfunction
 
-function aplus#prev(bang, n) abort
+function aplus#prev(bang, n=1) abort
   " moves to n'th (wrapping around) previous argument
   exe s:cbang("argument", a:bang)." ".(s:mod_argc(argidx() - a:n) + 1)
 endfunction
@@ -239,23 +254,53 @@ function aplus#wipeout_buf(bang, files) abort
 endfunction
 
 function aplus#move(from, to) abort
-  " moves element at a:from to given a:to position in list
-  let l:argv = argv()
-  let l:arg = remove(l:argv, a:from)
-  call insert(l:argv, l:arg, a:to)
-  call call("aplus#define", l:argv)
+  " moves element at a:from position to a:to position in list
+  let [l:from, l:to] = [s:norm_apos(a:from), s:norm_apos(a:to)]
+  echom l:from.." "..l:to
+  if l:to == l:from
+    return
+  endif
+  let l:argv = s:escaped_args(argv())
+  let l:arg = remove(l:argv, l:from)
+  call insert(l:argv, l:arg, l:to)
+  call aplus#define(l:argv)
+  call aplus#select(0, l:to + 1)
 endfunction
 
 function aplus#swap(from, to) abort
   " swaps element at a:from with file at a:to position in list
-  let l:argv = argv()
-  " TODO
+  let [l:from, l:to] = [s:norm_apos(a:from), s:norm_apos(a:to)]
+  let l:index = argidx()
+  if l:index == l:from
+    let l:index = l:to
+  elseif l:index == l:to
+    let l:index = l:from
+  endif
+  let l:argv = s:escaped_args(argv())
+  if l:from == l:to
+    return
+  elseif l:from > l:to
+    let [l:from, l:to] = [l:to, l:from]
+  endif
+  let l:f_to = remove(l:argv, l:to)
+  let l:f_from = remove(l:argv, l:from)
+  call insert(l:argv, l:f_to, l:from)
+  call insert(l:argv, l:f_from, l:to)
   call aplus#define(l:argv)
+  call aplus#select(0, l:index + 1)
 endfunction
 
 function aplus#replace(file, idx=-1) abort
   " replaces argument (idx) with given file
-  " TODO
+  " TODO test
+  let l:idx = a:idx
+  let l:argv = s:escaped_args(argv())
+  if l:idx == -1
+    let l:idx = argidx()
+  endif
+  call remove(l:argv, l:idx)
+  call insert(l:argv, a:file, l:idx)
+  call aplus#define(l:argv)
 endfunction
 
 " }}}
@@ -298,6 +343,8 @@ endfunction
 " }}}
 
 " commands {{{
+" all commands index from 1 (zero is current argument)
+" TODO check indexing
 
 command! -nargs=0 -bang AName
       \ call aplus#echo_output(<bang>0, "aplus#arg_name")
@@ -313,9 +360,9 @@ command! -count=1 -nargs=0 -bang ANext
 command! -count=1 -nargs=0 -bang APrev
       \ call aplus#prev(<bang>0, <count>)
 
-" Select n'th (indexed from 1) file
+" Select n'th file
 command! -count=0 -nargs=? -bang ASelect
-      \ call aplus#select(<bang>0, [<count>, <f-args>][0])
+      \ call aplus#select(<bang>0, (<count> == 0)?0<f-args>:<count>)
 " Go to file by name
 command! -nargs=? -bang -complete=arglist AGo
       \ call aplus#go(<bang>0, <f-args>)
@@ -351,23 +398,22 @@ command! -nargs=* -bang -complete=customlist,aplus#complete ABufDeln
 command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipen
       \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <SID>cescape(<f-args>))
 
-
-" " Move current file to position of given file
-" command! -nargs=1 -complete=customlist,aplus#complete AMoveTo
-"       \ call aplus#move(argidx(), <f-args>)
-" " Swap current file with given file
-" command! -nargs=1 -complete=customlist,aplus#complete ASwapWith
-"       \ call aplus#swap(argidx(), <f-args>)
+" Move current file to position of given file
+command! -nargs=1 -complete=arglist AMoveCur
+      \ call aplus#move(argidx(), <SID>arg_index(<f-args>))
+" Swap current file with given file
+command! -nargs=1 -complete=arglist ASwapWith
+      \ call aplus#swap(argidx(), <SID>arg_index(<f-args>))
 
 " Move current file to position given as count or argument
-command! -count=0 -nargs=? AMoveToN
-      \ call aplus#move(argidx(), <count> || 0<f-args>)
-" " Swap current file with file at position given as count or argument
-" command! -count=0 -nargs=? ASwapWithN
-"       \ call aplus#swap(argidx(), <count> || 0<f-args>)
+command! -count=0 -nargs=? AMoveCurN
+      \ call aplus#move(argidx()+1, (<count> == 0)?0<f-args>:<count>)
+" Swap current file with file at position given as count or argument
+command! -count=0 -nargs=? ASwapWithN
+      \ call aplus#swap(argidx()+1, (<count> == 0)?0<f-args>:<count>)
 
 " " Move file to position given as count or argument
-" command! -count=1 -nargs=1 AMoveN
+" command! -count=0 -nargs=1 AMove
 "       \ call aplus#move(<count>, <f-args>)
 " " Move first file to position of second file
 " command! -nargs=+ -complete=customlist,aplus#complete AMove
@@ -422,6 +468,9 @@ map <Plug>!AGo :<C-u>AGo!<CR>
 map <Plug>AAdd :<C-u>AAdd<CR>
 map <Plug>AEdit :<C-u>AEdit<CR>
 map <Plug>!AEdit :<C-u>AEdit!<CR>
+
+map <Plug>AMoveCurN :AMoveCurN<CR>
+map <Plug>ASwapWithN :ASwapWithN<CR>
 
 map <Plug>ADel :<C-u>ADel<CR>
 map <Plug>ABufDel :<C-u>ABufDel<CR>
