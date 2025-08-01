@@ -436,48 +436,6 @@ map <Plug>AExchange :<C-u>AExchange<CR>
 
 " }}}
 
-" predefined numbers {{{
-
-map <Plug>ASelect1 :<C-u>1ASelect<CR>
-map <Plug>ASelect2 :<C-u>2ASelect<CR>
-map <Plug>ASelect3 :<C-u>3ASelect<CR>
-map <Plug>ASelect4 :<C-u>4ASelect<CR>
-map <Plug>ASelect5 :<C-u>5ASelect<CR>
-map <Plug>ASelect6 :<C-u>6ASelect<CR>
-map <Plug>ASelect7 :<C-u>7ASelect<CR>
-map <Plug>ASelect8 :<C-u>8ASelect<CR>
-map <Plug>ASelect9 :<C-u>9ASelect<CR>
-map <Plug>!ASelect1 :<C-u>1ASelect!<CR>
-map <Plug>!ASelect2 :<C-u>2ASelect!<CR>
-map <Plug>!ASelect3 :<C-u>3ASelect!<CR>
-map <Plug>!ASelect4 :<C-u>4ASelect!<CR>
-map <Plug>!ASelect5 :<C-u>5ASelect!<CR>
-map <Plug>!ASelect6 :<C-u>6ASelect!<CR>
-map <Plug>!ASelect7 :<C-u>7ASelect!<CR>
-map <Plug>!ASelect8 :<C-u>8ASelect!<CR>
-map <Plug>!ASelect9 :<C-u>9ASelect!<CR>
-
-map <Plug>ASelect-1 :<C-u>exe "ASelect ".<SID>mod_argc(-1)<CR>
-map <Plug>ASelect-2 :<C-u>exe "ASelect ".<SID>mod_argc(-2)<CR>
-map <Plug>ASelect-3 :<C-u>exe "ASelect ".<SID>mod_argc(-3)<CR>
-map <Plug>ASelect-4 :<C-u>exe "ASelect ".<SID>mod_argc(-4)<CR>
-map <Plug>ASelect-5 :<C-u>exe "ASelect ".<SID>mod_argc(-5)<CR>
-map <Plug>ASelect-6 :<C-u>exe "ASelect ".<SID>mod_argc(-6)<CR>
-map <Plug>ASelect-7 :<C-u>exe "ASelect ".<SID>mod_argc(-7)<CR>
-map <Plug>ASelect-8 :<C-u>exe "ASelect ".<SID>mod_argc(-8)<CR>
-map <Plug>ASelect-9 :<C-u>exe "ASelect ".<SID>mod_argc(-9)<CR>
-map <Plug>!ASelect-1 :<C-u>exe "ASelect! ".<SID>mod_argc(-1)<CR>
-map <Plug>!ASelect-2 :<C-u>exe "ASelect! ".<SID>mod_argc(-2)<CR>
-map <Plug>!ASelect-3 :<C-u>exe "ASelect! ".<SID>mod_argc(-3)<CR>
-map <Plug>!ASelect-4 :<C-u>exe "ASelect! ".<SID>mod_argc(-4)<CR>
-map <Plug>!ASelect-5 :<C-u>exe "ASelect! ".<SID>mod_argc(-5)<CR>
-map <Plug>!ASelect-6 :<C-u>exe "ASelect! ".<SID>mod_argc(-6)<CR>
-map <Plug>!ASelect-7 :<C-u>exe "ASelect! ".<SID>mod_argc(-7)<CR>
-map <Plug>!ASelect-8 :<C-u>exe "ASelect! ".<SID>mod_argc(-8)<CR>
-map <Plug>!ASelect-9 :<C-u>exe "ASelect! ".<SID>mod_argc(-9)<CR>
-
-" }}}
-
 " }}}
 
 " setup {{{
