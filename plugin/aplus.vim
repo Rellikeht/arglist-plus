@@ -197,11 +197,7 @@ endfunction
 
 function aplus#select(bang, n=0) abort
   " moves to n'th argument
-  if a:n == 0
-    exe s:cbang("argument", a:bang)
-  else
-    exe s:cbang("argument", a:bang)." ".a:n
-  endif
+  exe a:n.s:cbang("argument", a:bang)
 endfunction
 
 function aplus#go(bang, name="") abort
@@ -290,16 +286,11 @@ function aplus#swap(from, to) abort
   call aplus#select(0, l:index + 1)
 endfunction
 
-function aplus#replace(file, idx=-1) abort
+function aplus#replace(file, idx=0) abort
   " replaces argument (idx) with given file
-  " TODO test
-  let l:idx = a:idx
   let l:argv = s:escaped_args(argv())
-  if l:idx == -1
-    let l:idx = argidx()
-  endif
-  call remove(l:argv, l:idx)
-  call insert(l:argv, a:file, l:idx)
+  call remove(l:argv, a:idx)
+  call insert(l:argv, fnameescape(a:file), a:idx)
   call aplus#define(l:argv)
 endfunction
 
@@ -343,8 +334,7 @@ endfunction
 " }}}
 
 " commands {{{
-" all commands index from 1 (zero is current argument)
-" TODO check indexing
+" all commands use ranges like vim arglist commands for indexing
 
 command! -nargs=0 -bang AName
       \ call aplus#echo_output(<bang>0, "aplus#arg_name")
@@ -361,8 +351,8 @@ command! -count=1 -nargs=0 -bang APrev
       \ call aplus#prev(<bang>0, <count>)
 
 " Select n'th file
-command! -count=0 -nargs=? -bang ASelect
-      \ call aplus#select(<bang>0, (<count> == 0)?0<f-args>:<count>)
+command! -range=% -addr=arguments -nargs=? -bang ASelect
+      \ call aplus#select(<bang>0, (len("<f-args>"))?<count>:<f-args>)
 " Go to file by name
 command! -nargs=? -bang -complete=arglist AGo
       \ call aplus#go(<bang>0, <f-args>)
@@ -375,8 +365,7 @@ command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
 
 " Add file(s) to arglist and edit (first)
 command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
-      \ call aplus#edit(<count>, <bang>0, <f-args>)
-      " \ call aplus#edit(<count>, <bang>0, <SID>cescape(<f-args>))
+      \ call aplus#edit(<count>, <bang>0, <SID>cescape(<f-args>))
 command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
       \ call aplus#edit(<count>, <bang>0, <SID>cescape(<f-args>))
 
@@ -406,21 +395,26 @@ command! -nargs=1 -complete=arglist ASwapWith
       \ call aplus#swap(argidx(), <SID>arg_index(<f-args>))
 
 " Move current file to position given as count or argument
-command! -count=0 -nargs=? AMoveCurN
-      \ call aplus#move(argidx()+1, (<count> == 0)?0<f-args>:<count>)
+command! -range=% -addr=arguments -nargs=? AMoveCurN
+      \ call aplus#move(argidx()+1, (len("<f-args>"))?<count>:<f-args>)
 " Swap current file with file at position given as count or argument
-command! -count=0 -nargs=? ASwapWithN
-      \ call aplus#swap(argidx()+1, (<count> == 0)?0<f-args>:<count>)
+command! -range=% -addr=arguments -nargs=? ASwapWithN
+      \ call aplus#swap(argidx()+1, (len("<f-args>"))?<count>:<f-args>)
 
-" " Move file to position given as count or argument
-" command! -count=0 -nargs=1 AMove
-"       \ call aplus#move(<count>, <f-args>)
-" " Move first file to position of second file
-" command! -nargs=+ -complete=customlist,aplus#complete AMove
-"       \ call aplus#move(<f-args>)
-" " Swap current file with file at position given as count or argument
-" command! -nargs=+ -complete=customlist,aplus#complete ASwap
-"       \ call aplus#swap(<f-args>)
+" Move first file to position given in count
+command! -range=% -addr=arguments -nargs=1 -complete=arglist AMove
+      \ call aplus#move(<count>, <SID>arg_index(<f-args>))
+" Swap file with file at position given as count
+command! -range=% -addr=arguments -nargs=1 -complete=arglist ASwap
+      \ call aplus#swap(<count>, <SID>arg_index(<f-args>))
+
+" Replace n'th argument with a given file
+command! -range=% -addr=arguments -nargs=1 -complete=file AReplace
+      \ call aplus#replace(<f-args>, <count>)
+command! -range=% -addr=arguments -nargs=1 -complete=buffer AReplaceBuf
+      \ call aplus#replace(<f-args>, <count>)
+
+" TODO replace file with file
 
 command! -nargs=* -complete=file ADefine
       \ call aplus#define(<SID>cescape(<f-args>))
