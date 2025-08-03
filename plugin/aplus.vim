@@ -31,7 +31,7 @@ function s:escaped_args(args) abort
 endfunction
 
 function s:instantiate(args) abort
-  return join(s:escped_args(a:args), " ")
+  return join(s:escaped_args(a:args), " ")
 endfunction
 
 function s:set_if_not_exist(name, value) abort
@@ -115,13 +115,12 @@ call s:set_if_not_exist("g:aplus#buf_del_hook", 1)
 " delete also from global list
 call s:set_if_not_exist("g:aplus#buf_del_global", 1)
 
-" TODO describe
-" tab/win
-call s:set_if_not_exist("g:aplus#new_tab", 0)
-" local/global
+" Despite some utils and some attempts this plugin is mostly ignorant
+" abount local/global arglist
+" should new tab get it's local arglist
 call s:set_if_not_exist("g:aplus#new_local", 1)
-" fresh/copied
-call s:set_if_not_exist("g:aplus#new_copy", 0)
+" should this arglist be copied from previous or global
+call s:set_if_not_exist("g:aplus#new_copy", 1)
 
 " }}}
 
@@ -483,34 +482,15 @@ map <Plug>AExchange :<C-u>AExchange<CR>
 
 " setup {{{
 
-function s:local_arglist(scopes) abort
-  if s:check_var("aplus#new_local", a:scopes)
-    " TODO
-    " arglocal
-    if s:check_var("aplus#new_copy", a:scopes)
-      " TODO
-      " echom winnr("#").
-    endif
-"     if s:check_var("aplus#tab_empty", ["t", "g"])
-"       %argd
-"     endif
-  endif
-endfunction
-
 function s:tab_arglist() abort
-  if !s:check_var("aplus#new_tab", ["t", "g"]) ||
-        \ arglistid() != 0
+  if !s:check_var("aplus#new_local", ["t", "g"])
     return
   endif
-  call s:local_arglist(["t", "g"])
-endfunction
-
-function s:win_arglist() abort
-  if s:check_var("aplus#new_tab", ["t", "g"]) ||
-        \ arglistid() != 0
-    return
+  if s:check_var("aplus#new_copy", ["t", "g"])
+    exe "arglocal! ".s:instantiate(argv())
+  else
+    arglocal!
   endif
-  call s:local_arglist(["w", "t", "g"])
 endfunction
 
 function s:win_buf_del(file) abort
@@ -543,10 +523,10 @@ if s:check_var("aplus#dedupe_on_start", ["g"])
 endif
 
 autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
-" autocmd TabNew * call s:tab_arglist()
-" autocmd WinNew * call s:win_arglist()
+" if session isn't being loaded
 if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
   autocmd VimEnter * arglocal
 endif
+autocmd TabNew * call s:tab_arglist()
 
 " }}}
