@@ -52,18 +52,6 @@ function s:expand_args_loop(cmd, list) abort
   endfor
 endfunction
 
-function s:windo_stay(expr) abort
-  let l:winnr = winnr()
-  exe "windo ".a:expr
-  exe l:winnr."wincmd w"
-endfunction
-
-function s:tabdo_stay(expr) abort
-  let l:tabnr = tabpagenr()
-  exe "tabdo ".a:expr
-  exe "tabnext ".l:tabnr
-endfunction
-
 function s:del_with_next(bang, func, ...) abort
   let l:args = deepcopy(a:000)
   let l:success = 0
@@ -120,7 +108,7 @@ call s:set_if_not_exist("g:aplus#buf_del_global", 1)
 " should new tab get it's local arglist
 call s:set_if_not_exist("g:aplus#new_local", 1)
 " should this arglist be copied from previous or global
-call s:set_if_not_exist("g:aplus#new_copy", 1)
+call s:set_if_not_exist("g:aplus#new_copy", 0)
 
 " }}}
 
@@ -143,7 +131,9 @@ function aplus#vert_list() abort
   if len(l:argv) == 0
     return ""
   endif
-  let l:argv[argidx()] = "[ ".l:argv[argidx()]." ]"
+  if argidx() >= 0 && argidx() < argc()
+    let l:argv[argidx()] = "[ ".l:argv[argidx()]." ]"
+  endif
   return join(l:argv, "\n")
 endfunction
 
@@ -154,7 +144,9 @@ function aplus#horiz_list() abort
   if len(l:argv) == 0
     return ""
   endif
-  let l:argv[argidx()] = "[".l:argv[argidx()]."]"
+  if argidx() >= 0 && argidx() < argc()
+    let l:argv[argidx()] = "[".l:argv[argidx()]."]"
+  endif
   return join(l:argv, "  ")
 endfunction
 
@@ -482,6 +474,18 @@ map <Plug>AExchange :<C-u>AExchange<CR>
 
 " setup {{{
 
+function s:windo_stay(expr) abort
+  let l:winnr = winnr()
+  exe "windo ".a:expr
+  exe l:winnr."wincmd w"
+endfunction
+
+function s:tabdo_stay(expr) abort
+  let l:tabnr = tabpagenr()
+  exe "tabdo ".a:expr
+  exe "tabnext ".l:tabnr
+endfunction
+
 function s:tab_arglist() abort
   if !s:check_var("aplus#new_local", ["t", "g"])
     return
@@ -509,9 +513,11 @@ function s:buf_del_hook(file) abort
   endif
   if s:check_var("aplus#buf_del_global", ["g"])
     try
-      call aplus#exchange()
+      let l:argv = s:escaped_args(argv())
+      argglobal
       exe "argdelete ".fnameescape(a:file)
-      call aplus#exchange()
+      call aplus#define(l:argv)
+      exe "argdelete ".fnameescape(a:file)
     catch
     endtry
   endif

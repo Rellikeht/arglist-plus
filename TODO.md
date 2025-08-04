@@ -1,4 +1,2 @@
-- replace with buf (file ?)
-- file under cursor
-- rename file (?)
+- deleting buffer deletes tabs before argument can be changed
 - netrw (?)
