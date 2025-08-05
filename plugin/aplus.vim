@@ -474,15 +474,15 @@ map <Plug>AExchange :<C-u>AExchange<CR>
 
 " setup {{{
 
-function s:windo_stay(expr) abort
+function s:windo_stay(func, ...) abort
   let l:winnr = winnr()
-  exe "windo ".a:expr
+  exe "windo call call('".a:func."', ".string(a:000).")"
   exe l:winnr."wincmd w"
 endfunction
 
-function s:tabdo_stay(expr) abort
+function s:tabdo_stay(func, ...) abort
   let l:tabnr = tabpagenr()
-  exe "tabdo ".a:expr
+  exe "tabdo call call('".a:func."', ".string(a:000).")"
   exe "tabnext ".l:tabnr
 endfunction
 
@@ -521,14 +521,15 @@ function s:buf_del_hook(file) abort
     catch
     endtry
   endif
-  call <SID>tabdo_stay("call s:windo_stay(\"call s:win_buf_del('".a:file."')\")")
+  let l:sid =  expand("<SID>")
+  call s:tabdo_stay(l:sid.."windo_stay", l:sid.."win_buf_del", a:file)
 endfunction
 
 if s:check_var("aplus#dedupe_on_start", ["g"])
   argdedupe
 endif
 
-autocmd BufDelete * call s:buf_del_hook(fnameescape(expand("<afile>")))
+autocmd BufDelete * call s:buf_del_hook(expand("<afile>"))
 " if session isn't being loaded
 if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
   autocmd VimEnter * arglocal
