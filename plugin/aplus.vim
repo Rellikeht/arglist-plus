@@ -77,6 +77,19 @@ function s:norm_apos(pos) abort
   return a:pos - 1
 endfunction
 
+function s:norm_place(place) abort
+  let l:place = a:place
+  let l:place = a:place
+  if l:place == -1
+    if argidx() == -1
+      let l:place = "$"
+    else
+      let l:place = argidx() + 1
+    endif
+  endif
+  return l:place
+endfunction
+
 function s:arg_index(name) abort
   return index(argv(), a:name)
 endfunction
@@ -213,13 +226,15 @@ endfunction
 
 function aplus#add(place, files) abort
   " adds (only not already present) files to arglist
-  exe a:place."argadd ".join(a:files, " ")
+  let l:place = s:norm_place(a:place)
+  exe l:place."argadd ".join(a:files, " ")
   argdedupe
 endfunction
 
 function aplus#edit(place, bang, files) abort
   " adds (only not already present) files to arglist and edits first
-  exe a:place.s:cbang("argedit", a:bang)." ".join(a:files, " ")
+  let l:place = s:norm_place(a:place)
+  exe l:place.s:cbang("argedit", a:bang)." ".join(a:files, " ")
   argdedupe
 endfunction
 
