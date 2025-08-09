@@ -218,33 +218,35 @@ endfunction
 
 " operations on list elements {{{
 
-function aplus#add(place, files) abort
+function aplus#add(place, ...) abort
   " adds (only not already present) files to arglist
-  exe s:norm_place(a:place)."argadd ".join(a:files, " ")
+  exe s:norm_place(a:place)."argadd ".join(deepcopy(a:000), " ")
   argdedupe
 endfunction
 
-function aplus#edit(place, bang, files) abort
+function aplus#edit(place, bang, ...) abort
   " adds (only not already present) files to arglist and edits first
-  exe s:norm_place(a:place).s:cbang("argedit", a:bang)." ".join(a:files, " ")
+  exe s:norm_place(a:place).s:cbang("argedit", a:bang)." ".join(deepcopy(a:000), " ")
   argdedupe
 endfunction
 
-function aplus#delete(bang, files) abort
+function aplus#delete(bang, ...) abort
   " deletes arguments from list
-  exe s:cbang("argdelete", a:bang)." ".join(a:files, " ")
+  exe s:cbang("argdelete", a:bang)." ".join(deepcopy(a:000), " ")
 endfunction
 
-function aplus#delete_buf(bang, files) abort
+function aplus#delete_buf(bang, ...) abort
   " deletes argument from list and it's corresponding buffer
-  call aplus#delete(a:bang, a:files)
-  call s:expand_args_loop(s:cbang("bdelete", a:bang), a:files)
+  let l:files = deepcopy(a:000)
+  call aplus#delete(a:bang, l:files)
+  call s:expand_args_loop(s:cbang("bdelete", a:bang), l:files)
 endfunction
 
-function aplus#wipeout_buf(bang, files) abort
+function aplus#wipeout_buf(bang, ...) abort
   " deletes argument from list and wipes out it's corresponding buffer
-  call aplus#delete(a:bang, a:files)
-  call s:expand_args_loop(s:cbang("bwipeout", a:bang), a:files)
+  let l:files = deepcopy(a:000)
+  call aplus#delete(a:bang, l:files)
+  call s:expand_args_loop(s:cbang("bwipeout", a:bang), l:files)
 endfunction
 
 " TODO fix indices
@@ -297,10 +299,10 @@ endfunction
 
 " operations on lists {{{
 
-function aplus#define(files) abort
+function aplus#define(...) abort
   " define list of currently used scope to be list given as parameter
   %argdel
-  call aplus#add(0, a:files)
+  call aplus#add(0, deepcopy(a:000))
 endfunction
 
 function aplus#log_to_glob() abort
