@@ -18,30 +18,6 @@ function s:check_var(name, scopes) abort
   return 0
 endfunction
 
-" function s:cescape(...) abort
-"   let l:args = deepcopy(a:000)
-"   echom l:args
-"   call flatten(l:args)
-"   echom l:args
-"   call map(l:args, "escape(v:val, \"<\")")
-"   echom l:args
-
-"   " call flatten(l:args)
-"   " echom l:args
-"   " call map(l:args, 'split(expand(v:val), "\n")')
-"   " echom l:args
-"   " call flatten(l:args)
-"   " echom l:args
-"   " call map(l:args, 'fnameescape(v:val)')
-"   " echom l:args
-
-"   call map(l:args, 'split(v:val, "[^\\\\]\\zs ")')
-"   echom l:args
-"   call flatten(l:args)
-"   echom l:args
-"   return l:args
-" endfunction
-
 function s:cescape(arg) abort
   return split(escape(a:arg, '<'), '[^\]\zs ')
 endfunction
@@ -114,6 +90,22 @@ endfunction
 
 function s:arg_index(name) abort
   return index(argv(), a:name)
+endfunction
+
+function s:save_pos() abort
+  let l:name = expand("%")
+  let l:file = index(argv(), l:name)
+  if l:file == -1
+    return ""
+  endif
+  return l:name
+endfunction
+
+function s:restore_pos(saved) abort
+  if a:saved != ""
+    let l:file = index(argv(), a:saved)
+    call aplus#select(0, l:file + 1)
+  endif
 endfunction
 
 function aplus#complete(lead, cmdline, cursorpos) abort
@@ -284,7 +276,6 @@ function aplus#wipeout_buf(bang, ...) abort
   call s:expand_args_loop(s:cbang("bwipeout", a:bang), l:files)
 endfunction
 
-" TODO fix indices
 function aplus#move(from, to) abort
   " moves element at a:from position to a:to position in list
   let [l:from, l:to] = [s:norm_apos(a:from), s:norm_apos(a:to)]
@@ -292,22 +283,18 @@ function aplus#move(from, to) abort
   if l:to == l:from
     return
   endif
+  let l:saved = s:save_pos()
   let l:argv = s:escaped_args(argv())
   let l:arg = remove(l:argv, l:from)
   call insert(l:argv, l:arg, l:to)
   call aplus#define(l:argv)
-  call aplus#select(0, l:to + 1)
+  call s:restore_pos(l:saved)
 endfunction
 
 function aplus#swap(from, to) abort
   " swaps element at a:from with file at a:to position in list
   let [l:from, l:to] = [s:norm_apos(a:from), s:norm_apos(a:to)]
-  let l:index = argidx()
-  if l:index == l:from
-    let l:index = l:to
-  elseif l:index == l:to
-    let l:index = l:from
-  endif
+  let l:saved = s:save_pos()
   let l:argv = s:escaped_args(argv())
   if l:from == l:to
     return
@@ -319,7 +306,7 @@ function aplus#swap(from, to) abort
   call insert(l:argv, l:f_to, l:from)
   call insert(l:argv, l:f_from, l:to)
   call aplus#define(l:argv)
-  call aplus#select(0, l:index + 1)
+  call s:restore_pos(l:saved)
 endfunction
 
 function aplus#replace(file, idx=0) abort
@@ -336,12 +323,8 @@ endfunction
 
 function aplus#define(...) abort
   " define list of currently used scope to be list given as parameter
-  " %argdel
-  let l:args = flatten(deepcopy(a:000))
-  exe "args ".join(l:args, " ")
-  " echom a:000[0]
-  " exe "args ".escape(a:000[0], '<')
-  argdedupe
+  %argdel
+  call aplus#add(0, a:000)
 endfunction
 
 function aplus#log_to_glob() abort
@@ -427,13 +410,12 @@ command! -nargs=* -bang -complete=customlist,aplus#complete ABufDeln
 command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipen
       \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <q-args>)
 
-" TODO check
 " Move current file to position of given file
 command! -nargs=1 -complete=arglist AMoveCur
-      \ call aplus#move(argidx(), <SID>arg_index(<q-args>))
+      \ call aplus#move(argidx()+1, <SID>arg_index(<q-args>)+1)
 " Swap current file with given file
 command! -nargs=1 -complete=arglist ASwapWith
-      \ call aplus#swap(argidx(), <SID>arg_index(<q-args>))
+      \ call aplus#swap(argidx()+1, <SID>arg_index(<q-args>)+1)
 
 " Move current file to position given as count or argument
 command! -range=% -addr=arguments -nargs=? AMoveCurN
@@ -444,10 +426,13 @@ command! -range=% -addr=arguments -nargs=? ASwapWithN
 
 " Move file to position given in count
 command! -range=% -addr=arguments -nargs=1 -complete=arglist AMove
-      \ call aplus#move(<count>, <SID>arg_index(<q-args>))
+      \ call aplus#move(
+      \ <SID>arg_index(<q-args>)+1,
+      \ (<count><=0)?argidx()+1:<count>
+      \ )
 " Swap file with file at position given as count
 command! -range=% -addr=arguments -nargs=1 -complete=arglist ASwap
-      \ call aplus#swap(<count>, <SID>arg_index(<q-args>))
+      \ call aplus#swap(<count>, <SID>arg_index(<q-args>)+1)
 
 " Replace n'th argument with a given file
 command! -range=% -addr=arguments -nargs=1 -complete=file AReplace
