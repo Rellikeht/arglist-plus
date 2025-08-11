@@ -19,7 +19,9 @@ function s:check_var(name, scopes) abort
 endfunction
 
 function s:cescape(arg) abort
-  return split(escape(a:arg, '<'), '[^\]\zs ')
+  " TODO Is this regex enough
+  " TODO just in case'\v(^|[^\\])(\\+)\1\zs |[^\\]\zs '
+  return split(escape(a:arg, '<'), '[^\\]\zs ')
 endfunction
 
 function s:escaped_args(args) abort
@@ -327,17 +329,19 @@ function aplus#define(...) abort
   call aplus#add(0, a:000)
 endfunction
 
-function aplus#log_to_glob() abort
+function aplus#loc_to_glob() abort
   " replaces global with copy of local
   if arglistid() == 0
     throw "Not using local arglist"
   endif
   exe "argglobal ".s:instantiate(argv())
+  argdedupe
 endfunction
 
 function aplus#glob_to_loc() abort
   " replaces local with copy of global
   arglocal
+  argdedupe
 endfunction
 
 function aplus#exchange() abort
@@ -345,8 +349,10 @@ function aplus#exchange() abort
   if arglistid() == 0
     throw "Not using local arglist, there is nothing to exchange"
   endif
+  argdedupe
   let l:local_copy = argv()
   arglocal
+  argdedupe
   let l:global_copy = argv()
   exe "argglobal ".s:instantiate(l:local_copy)
   exe "arglocal ".s:instantiate(l:global_copy)
@@ -528,6 +534,7 @@ function s:tab_arglist() abort
   else
     arglocal!
   endif
+  argdedupe
 endfunction
 
 function s:win_buf_del(file) abort
@@ -566,6 +573,7 @@ autocmd BufDelete * call s:buf_del_hook(expand("<afile>"))
 " if session isn't being loaded
 if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
   autocmd VimEnter * arglocal
+  argdedupe
 endif
 autocmd TabNew * call s:tab_arglist()
 
