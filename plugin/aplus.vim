@@ -19,9 +19,8 @@ function s:check_var(name, scopes) abort
 endfunction
 
 function s:cescape(arg) abort
-  " TODO Is this regex enough
   " TODO just in case'\v(^|[^\\])(\\+)\1\zs |[^\\]\zs '
-  return split(escape(a:arg, '<'), '[^\\]\zs ')
+  return split(escape(a:arg, '<%#'), '[^\\]\zs ')
 endfunction
 
 function s:escaped_args(args) abort
