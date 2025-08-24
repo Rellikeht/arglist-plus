@@ -132,7 +132,7 @@ call s:set_if_not_exist("g:aplus#buf_del_hook", 1)
 call s:set_if_not_exist("g:aplus#buf_del_global", 1)
 
 " Despite some utils and some attempts this plugin is mostly ignorant
-" abount local/global arglist
+" about local/global arglist
 " should new tab get it's local arglist
 call s:set_if_not_exist("g:aplus#new_local", 1)
 " should this arglist be copied from previous or global
@@ -408,11 +408,11 @@ command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipe
       \ call aplus#wipeout_buf(<bang>0, <q-args>)
 
 " versions that argedit after deleting
-command! -nargs=* -bang -complete=customlist,aplus#complete ADeln
+command! -nargs=* -bang -complete=customlist,aplus#complete ADelN
       \ call <SID>del_with_next(<bang>0, "aplus#delete", <q-args>)
-command! -nargs=* -bang -complete=customlist,aplus#complete ABufDeln
+command! -nargs=* -bang -complete=customlist,aplus#complete ABufDelN
       \ call <SID>del_with_next(<bang>0, "aplus#delete_buf", <q-args>)
-command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipen
+command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipeN
       \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <q-args>)
 
 " Move current file to position of given file

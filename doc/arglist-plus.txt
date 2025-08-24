@@ -1,0 +1,257 @@
+*arglist-plus.txt*  Various utilities for argument list
+
+INTRODUCTION                                    *arglist-plus* *aplus*
+
+Goal of this plugin is to allow argument list to be main navigation
+mechanism. Inspired by ThePrimeagen's harpoon.
+
+FUNCTIONS                                       *arglist-plus-functions* *aplus-functions*
+
+ TODO
+
+COMMANDS                                       *arglist-plus-commands* *aplus-commands*
+
+Getting info ~
+
+Bang in following commands makes them use |:echomsg| instead of |:echo|.
+
+:AName[!]
+
+    command! -nargs=0 -bang AName
+          \ call aplus#echo_output(<bang>0, "aplus#arg_name")
+
+:AList[!]
+
+    command! -nargs=0 -bang AList
+          \ call aplus#echo_output(<bang>0, "aplus#list")
+
+:AVertList[!]
+
+    command! -nargs=0 -bang AVertList
+          \ call aplus#echo_output(<bang>0, "aplus#vert_list")
+
+:AHorizList[!]
+
+    command! -nargs=0 -bang AHorizList
+          \ call aplus#echo_output(<bang>0, "aplus#horiz_list")
+
+Navigation ~
+
+:[count]ANext
+
+    command! -count=1 -nargs=0 -bang ANext
+          \ call aplus#next(<bang>0, <count>)
+
+:[count]APrev[!]
+
+    command! -count=1 -nargs=0 -bang APrev
+          \ call aplus#prev(<bang>0, <count>)
+
+:[range]ASelect[!] [number]             Select n'th file
+
+    command! -range=% -addr=arguments -nargs=? -bang ASelect
+          \ call aplus#select(<bang>0, len("<args>")?0<args>:<count>)
+
+:AGo[!] [name]                          Go to file by name
+
+    command! -nargs=? -bang -complete=arglist AGo
+          \ call aplus#go(<bang>0, <q-args>)
+
+Adding to arglist ~
+
+:[range]AAdd file [...]                 Add file(s) to arglist
+
+    command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
+          \ call aplus#add(<count>, <SID>cescape(<q-args>))
+
+:[range]AAddBuf buffer [...]            Add file(s) to arglist
+
+    command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
+          \ call aplus#add(<count>, <SID>cescape(<q-args>))
+
+:[range]AEdit[!] file [...]             Add file(s) to arglist and edit (first)
+
+    command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
+          \ call aplus#edit(<count>, <bang>0, <SID>cescape(<q-args>))
+
+:[range]AEditBuf[!] buffer [...]        Add file(s) to arglist and edit (first)
+
+    command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
+          \ call aplus#edit(<count>, <bang>0, <SID>cescape(<q-args>))
+
+Removing from arglist ~
+
+:ADel[!] [args...]                      Remove file from arglist
+
+    command! -nargs=* -bang -complete=customlist,aplus#complete ADel
+          \ call aplus#delete(<bang>0, <q-args>)
+
+:ABufDel[!] [args...]                   Remove file from arglist and delete it's buffer
+
+    command! -nargs=* -bang -complete=customlist,aplus#complete ABufDel
+          \ call aplus#delete_buf(<bang>0, <q-args>)
+
+:ABufWipe[!] [args...]                  Remove file from arglist and wipe out it's buffer
+
+    command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipe
+          \ call aplus#wipeout_buf(<bang>0, <q-args>)
+
+Versions that argedit next free after deleting:
+
+:ADelN[!] [args...]
+
+    command! -nargs=* -bang -complete=customlist,aplus#complete ADelN
+          \ call <SID>del_with_next(<bang>0, "aplus#delete", <q-args>)
+
+:ABufDelN[!] [args...]
+
+    command! -nargs=* -bang -complete=customlist,aplus#complete ABufDelN
+          \ call <SID>del_with_next(<bang>0, "aplus#delete_buf", <q-args>)
+
+:ABufWipeN[!] [args...]
+
+    command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipeN
+          \ call <SID>del_with_next(<bang>0, "aplus#wipeout_buf", <q-args>)
+
+Rearranging arglist ~
+
+:AMoveCur arg                           Move current file to position of
+                                        given file
+
+    command! -nargs=1 -complete=arglist AMoveCur
+          \ call aplus#move(argidx()+1, <SID>arg_index(<q-args>)+1)
+
+:ASwapWith arg                          Swap current file with given file
+
+    command! -nargs=1 -complete=arglist ASwapWith
+          \ call aplus#swap(argidx()+1, <SID>arg_index(<q-args>)+1)
+
+:[range]AMoveCurN [number]              Move current file to position given
+                                        as count or argument
+
+    command! -range=% -addr=arguments -nargs=? AMoveCurN
+          \ call aplus#move(argidx()+1, (len("<args>"))?0<args>:<count>)
+
+:[range]ASwapWithN [number]             Swap current file with file at
+                                        position given as count or argument
+
+    command! -range=% -addr=arguments -nargs=? ASwapWithN
+          \ call aplus#swap(argidx()+1, (len("<args>"))?0<args>:<count>)
+
+:[range]AMove arg                       Move file to position given in count
+
+    command! -range=% -addr=arguments -nargs=1 -complete=arglist AMove
+          \ call aplus#move(
+          \ <SID>arg_index(<q-args>)+1,
+          \ (<count><=0)?argidx()+1:<count>
+          \ )
+
+:[range]ASwap arg                       Swap file with file at position
+                                        given as count
+
+    command! -range=% -addr=arguments -nargs=1 -complete=arglist ASwap
+          \ call aplus#swap(<count>, <SID>arg_index(<q-args>)+1)
+
+:[range]AReplace file                   Replace n'th argument with a given file
+
+    command! -range=% -addr=arguments -nargs=1 -complete=file AReplace
+          \ call aplus#replace(<SID>cescape(<q-args>), <count>)
+
+:[range]AReplaceBuf buffer              Replace n'th argument with a given file
+
+    command! -range=% -addr=arguments -nargs=1 -complete=buffer AReplaceBuf
+          \ call aplus#replace(<SID>cescape(<q-args>), <count>)
+
+Defining arglist ~
+
+:ADefine [files...]
+
+    command! -nargs=* -complete=file ADefine
+          \ call aplus#define(<SID>cescape(<q-args>))
+
+:ADefineBuf [buffers...]
+
+    command! -nargs=* -complete=buffer ADefineBuf
+          \ call aplus#define(<SID>cescape(<q-args>))
+
+:ADefineArgs [arguments...]
+
+    command! -nargs=* -complete=customlist,aplus#complete ADefineArgs
+          \ call aplus#define(<SID>cescape(<q-args>))
+
+:ADefineGo[!] [files...]
+
+    command! -nargs=* -bang -complete=file ADefineGo
+          \ call aplus#define(<q-args>)|call aplus#select(<bang>0)
+
+:ADefineGoBuf[!] [buffers...]
+
+    command! -nargs=* -bang -complete=buffer ADefineGoBuf
+          \ call aplus#define(<q-args>)|call aplus#select(<bang>0)
+
+:ADefineGoArgs[!] [args...]
+
+    command! -nargs=* -bang -complete=customlist,aplus#complete ADefineGoArgs
+          \ call aplus#define(<q-args>)|call aplus#select(<bang>0)
+
+Global and local arglist management ~
+
+:AGlobToLoc
+
+    command! -nargs=0 AGlobToLoc call aplus#glob_to_loc()
+
+:ALocToGlob
+
+    command! -nargs=0 ALocToGlob call aplus#log_to_glob()
+
+:AExchange
+
+    command! -nargs=0 AExchange call aplus#exchange()
+
+
+SETTINGS                                       *arglist-plus-settings* *aplus-settings*
+
+g:aplus#dedupe_on_start
+
+Should |:argdedupe| be run on |VimEnter|
+
+Default: 1
+
+--------------------------------------------------------------
+
+g:aplus#buf_del_hook
+
+Should buffer be removed from all local arglists on |:bufdelete|
+or |:bufwipeout|
+
+Default: 1
+
+--------------------------------------------------------------
+
+g:aplus#buf_del_global
+
+Should file from above also be deleted from global arglist
+
+Default: 1
+
+--------------------------------------------------------------
+
+g:aplus#new_local
+
+Should new tab get it's local arglist
+
+Default: 1
+
+--------------------------------------------------------------
+
+g:aplus#new_copy
+
+Should arglist for new tab be copied from previous or global.
+0 - global
+1 - copied
+
+Default: 0
+
+PLUG-MAPS                                       *arglist-plus-plug-maps* *aplus-plug-maps*
+
+ TODO
