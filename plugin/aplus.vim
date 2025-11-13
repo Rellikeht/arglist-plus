@@ -1,3 +1,6 @@
+" TODO replace argdedupe because it only works for duplicates next to
+" each other
+
 " helpers {{{
 
 function s:cbang(command, bang) abort
@@ -18,7 +21,7 @@ function s:check_var(name, scopes) abort
   return 0
 endfunction
 
-function s:cescape(arg) abort
+function s:arg_escape(arg) abort
   " TODO just in case'\v(^|[^\\])(\\+)\1\zs |[^\\]\zs '
   return split(escape(a:arg, '<%#'), '[^\\]\zs ')
 endfunction
@@ -107,6 +110,27 @@ function s:restore_pos(saved) abort
     let l:file = index(argv(), a:saved)
     call aplus#select(0, l:file + 1)
   endif
+endfunction
+
+function s:argdedupe() abort
+  " because argdedupe works relatively to current directory and if in 
+  " other directory but on the same level there is a file with the same
+  " as current file name it will be deduped
+  try
+    let l:p1 = execute("pwd")
+    tcd -
+    let l:p2 = execute("pwd")
+    tcd -
+    tcd /
+    argdedupe
+    tcd -
+    execute "tcd ".l:p2
+    execute "tcd ".l:p1
+  catch
+    tcd /
+    argdedupe
+    tcd -
+  endtry
 endfunction
 
 function aplus#complete(lead, cmdline, cursorpos) abort
@@ -247,14 +271,14 @@ function aplus#add(place, ...) abort
   " adds (only not already present) files to arglist
   let l:args = flatten(deepcopy(a:000))
   exe s:norm_place(a:place)."argadd ".join(l:args, " ")
-  argdedupe
+  call s:argdedupe()
 endfunction
 
 function aplus#edit(place, bang, ...) abort
   " adds (only not already present) files to arglist and edits first
   let l:args = flatten(deepcopy(a:000))
   exe s:norm_place(a:place).s:cbang("argedit", a:bang)." ".join(l:args, " ")
-  argdedupe
+  call s:argdedupe()
 endfunction
 
 function aplus#delete(bang, ...) abort
@@ -334,13 +358,13 @@ function aplus#loc_to_glob() abort
     throw "Not using local arglist"
   endif
   exe "argglobal ".s:instantiate(argv())
-  argdedupe
+  call s:argdedupe()
 endfunction
 
 function aplus#glob_to_loc() abort
   " replaces local with copy of global
   arglocal
-  argdedupe
+  call s:argdedupe()
 endfunction
 
 function aplus#exchange() abort
@@ -348,10 +372,10 @@ function aplus#exchange() abort
   if arglistid() == 0
     throw "Not using local arglist, there is nothing to exchange"
   endif
-  argdedupe
+  call s:argdedupe()
   let l:local_copy = argv()
   arglocal
-  argdedupe
+  call s:argdedupe()
   let l:global_copy = argv()
   exe "argglobal ".s:instantiate(l:local_copy)
   exe "arglocal ".s:instantiate(l:global_copy)
@@ -387,15 +411,15 @@ command! -nargs=? -bang -complete=arglist AGo
 
 " Add file(s) to arglist
 command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
-      \ call aplus#add(<count>, <SID>cescape(<q-args>))
+      \ call aplus#add(<count>, <SID>arg_escape(<q-args>))
 command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
-      \ call aplus#add(<count>, <SID>cescape(<q-args>))
+      \ call aplus#add(<count>, <SID>arg_escape(<q-args>))
 
 " Add file(s) to arglist and edit (first)
 command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
-      \ call aplus#edit(<count>, <bang>0, <SID>cescape(<q-args>))
+      \ call aplus#edit(<count>, <bang>0, <SID>arg_escape(<q-args>))
 command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
-      \ call aplus#edit(<count>, <bang>0, <SID>cescape(<q-args>))
+      \ call aplus#edit(<count>, <bang>0, <SID>arg_escape(<q-args>))
 
 " Remove file from arglist
 command! -nargs=* -bang -complete=customlist,aplus#complete ADel
@@ -441,16 +465,16 @@ command! -range=% -addr=arguments -nargs=1 -complete=arglist ASwap
 
 " Replace n'th argument with a given file
 command! -range=% -addr=arguments -nargs=1 -complete=file AReplace
-      \ call aplus#replace(<SID>cescape(<q-args>), <count>)
+      \ call aplus#replace(<SID>arg_escape(<q-args>), <count>)
 command! -range=% -addr=arguments -nargs=1 -complete=buffer AReplaceBuf
-      \ call aplus#replace(<SID>cescape(<q-args>), <count>)
+      \ call aplus#replace(<SID>arg_escape(<q-args>), <count>)
 
 command! -nargs=* -complete=file ADefine
-      \ call aplus#define(<SID>cescape(<q-args>))
+      \ call aplus#define(<SID>arg_escape(<q-args>))
 command! -nargs=* -complete=buffer ADefineBuf
-      \ call aplus#define(<SID>cescape(<q-args>))
+      \ call aplus#define(<SID>arg_escape(<q-args>))
 command! -nargs=* -complete=customlist,aplus#complete ADefineArgs
-      \ call aplus#define(<SID>cescape(<q-args>))
+      \ call aplus#define(<SID>arg_escape(<q-args>))
 
 command! -nargs=* -bang -complete=file ADefineGo
       \ call aplus#define(<q-args>)|call aplus#select(<bang>0)
@@ -533,7 +557,7 @@ function s:tab_arglist() abort
   else
     arglocal!
   endif
-  argdedupe
+  call s:argdedupe()
 endfunction
 
 function s:win_buf_del(file) abort
@@ -565,14 +589,14 @@ function s:buf_del_hook(file) abort
 endfunction
 
 if s:check_var("aplus#dedupe_on_start", ["g"])
-  argdedupe
+  call s:argdedupe()
 endif
 
 autocmd BufDelete * call s:buf_del_hook(expand("<afile>"))
 " if session isn't being loaded
 if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
   autocmd VimEnter * arglocal
-  argdedupe
+  call s:argdedupe()
 endif
 autocmd TabNew * call s:tab_arglist()
 
