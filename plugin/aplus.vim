@@ -112,6 +112,23 @@ function s:restore_pos(saved) abort
   endif
 endfunction
 
+" TODO do this without argdedupe command
+function s:dedupe() abort
+  call Dedupe()
+endfunction
+
+function Dedupe() abort
+  let l:args = argv()
+  let l:prev = {}
+  for arg in l:args
+    if get(l:prev, arg, 0) == 0
+      let l:prev[arg] = 1
+      continue
+    endif
+    call remove(l:args, arg)
+  endfor
+endfunction
+
 function s:argdedupe() abort
   " because argdedupe works relatively to current directory and if in 
   " other directory but on the same level there is a file with the same
@@ -122,13 +139,13 @@ function s:argdedupe() abort
     let l:p2 = execute("pwd")
     tcd -
     tcd /
-    argdedupe
+    call s:dedupe()
     tcd -
     execute "tcd ".l:p2
     execute "tcd ".l:p1
   catch
     tcd /
-    argdedupe
+    call s:dedupe()
     tcd -
   endtry
 endfunction
@@ -165,6 +182,17 @@ call s:set_if_not_exist("g:aplus#new_copy", 0)
 " }}}
 
 " functions {{{
+
+" operation helpers {{{
+
+function s:add(place, name) abort
+  let l:idx = index(argv(), a:name)
+  if l:idx == -1
+    exe s:norm_place(a:place)."argadd ".a:name
+  endif
+endfunction
+
+" }}}
 
 " information {{{
 
@@ -253,7 +281,7 @@ function aplus#go(bang, name="") abort
     exe s:cbang("argument", a:bang)
   else
     " avoid duplication of entries
-    " version with argdedupe doesn't work sometimes ?
+    " argdedupe isn't good enough
     let l:idx = index(argv(), a:name)
     if l:idx == -1
       exe s:cbang("argedit", a:bang)." ".a:name
@@ -271,6 +299,7 @@ function aplus#add(place, ...) abort
   " adds (only not already present) files to arglist
   let l:args = flatten(deepcopy(a:000))
   exe s:norm_place(a:place)."argadd ".join(l:args, " ")
+  " TODO eliminate argdedupe
   call s:argdedupe()
 endfunction
 
@@ -278,6 +307,7 @@ function aplus#edit(place, bang, ...) abort
   " adds (only not already present) files to arglist and edits first
   let l:args = flatten(deepcopy(a:000))
   exe s:norm_place(a:place).s:cbang("argedit", a:bang)." ".join(l:args, " ")
+  " TODO eliminate argdedupe
   call s:argdedupe()
 endfunction
 
@@ -588,13 +618,11 @@ function s:buf_del_hook(file) abort
   call s:tabdo_stay(l:sid.."windo_stay", l:sid.."win_buf_del", a:file)
 endfunction
 
+autocmd BufDelete * call s:buf_del_hook(expand("<afile>"))
 if s:check_var("aplus#dedupe_on_start", ["g"])
   call s:argdedupe()
-endif
-
-autocmd BufDelete * call s:buf_del_hook(expand("<afile>"))
-" if session isn't being loaded
-if s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
+elseif s:check_var("aplus#new_local", ["g"]) && index(v:argv, "-S") == -1
+  " if session isn't being loaded
   autocmd VimEnter * arglocal
   call s:argdedupe()
 endif
