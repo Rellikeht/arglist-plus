@@ -150,6 +150,15 @@ function s:argdedupe() abort
   endtry
 endfunction
 
+" TODO use this
+function s:count(vcount, acount) abort
+  " Helper for counts in commands
+  if a:vcount != 0
+    return a:vcount
+  endif
+  return a:acount
+endfunction
+
 function aplus#complete(lead, cmdline, cursorpos) abort
   " Completes files from arglist
   let l:comps = deepcopy(getcompletion(a:lead, "arglist"))
