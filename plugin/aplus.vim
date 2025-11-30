@@ -150,13 +150,12 @@ function s:argdedupe() abort
   endtry
 endfunction
 
-" TODO use this
-function s:count(vcount, acount) abort
+function s:count(motion_count, command_count) abort
   " Helper for counts in commands
-  if a:vcount != 0
-    return a:vcount
+  if a:motion_count != 0
+    return a:motion_count
   endif
-  return a:acount
+  return a:command_count
 endfunction
 
 function aplus#complete(lead, cmdline, cursorpos) abort
@@ -436,29 +435,30 @@ command! -nargs=0 -bang AVertList
 command! -nargs=0 -bang AHorizList
       \ call aplus#echo_output(<bang>0, "aplus#horiz_list")
 
+" TODO improve counts
 command! -count=1 -nargs=0 -bang ANext
       \ call aplus#next(<bang>0, <count>)
 command! -count=1 -nargs=0 -bang APrev
       \ call aplus#prev(<bang>0, <count>)
 
 " Select n'th file
-command! -range=% -addr=arguments -nargs=? -bang ASelect
-      \ call aplus#select(<bang>0, len("<args>")?0<args>:<count>)
+command! -range=% -addr=arguments -bang ASelect
+      \ call aplus#select(<bang>0, <SID>count(v:count, <count>))
 " Go to file by name
 command! -nargs=? -bang -complete=arglist AGo
       \ call aplus#go(<bang>0, <q-args>)
 
 " Add file(s) to arglist
 command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
-      \ call aplus#add(<count>, <SID>arg_escape(<q-args>))
+      \ call aplus#add(<SID>count(v:count, <count>), <SID>arg_escape(<q-args>))
 command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
-      \ call aplus#add(<count>, <SID>arg_escape(<q-args>))
+      \ call aplus#add(<SID>count(v:count, <count>), <SID>arg_escape(<q-args>))
 
 " Add file(s) to arglist and edit (first)
 command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
-      \ call aplus#edit(<count>, <bang>0, <SID>arg_escape(<q-args>))
+      \ call aplus#edit(<SID>count(v:count, <count>), <bang>0, <SID>arg_escape(<q-args>))
 command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
-      \ call aplus#edit(<count>, <bang>0, <SID>arg_escape(<q-args>))
+      \ call aplus#edit(<SID>count(v:count, <count>), <bang>0, <SID>arg_escape(<q-args>))
 
 " Remove file from arglist
 command! -nargs=* -bang -complete=customlist,aplus#complete ADel
@@ -485,14 +485,15 @@ command! -nargs=1 -complete=arglist AMoveCur
 command! -nargs=1 -complete=arglist ASwapWith
       \ call aplus#swap(argidx()+1, <SID>arg_index(<q-args>)+1)
 
-" Move current file to position given as count or argument
-command! -range=% -addr=arguments -nargs=? AMoveCurN
-      \ call aplus#move(argidx()+1, (len("<args>"))?0<args>:<count>)
-" Swap current file with file at position given as count or argument
-command! -range=% -addr=arguments -nargs=? ASwapWithN
-      \ call aplus#swap(argidx()+1, (len("<args>"))?0<args>:<count>)
+" Move current file to position given as count
+command! -range=% -addr=arguments AMoveCurN
+      \ call aplus#move(argidx()+1, <SID>count(v:count, <count>))
+" Swap current file with file at position given as count
+command! -range=% -addr=arguments ASwapWithN
+      \ call aplus#swap(argidx()+1, <SID>count(v:count, <count>))
 
-" Move file to position given in count
+" TODO check this
+" Move a file to position given in count
 command! -range=% -addr=arguments -nargs=1 -complete=arglist AMove
       \ call aplus#move(
       \ <SID>arg_index(<q-args>)+1,
@@ -500,13 +501,13 @@ command! -range=% -addr=arguments -nargs=1 -complete=arglist AMove
       \ )
 " Swap file with file at position given as count
 command! -range=% -addr=arguments -nargs=1 -complete=arglist ASwap
-      \ call aplus#swap(<count>, <SID>arg_index(<q-args>)+1)
+      \ call aplus#swap(<SID>count(v:count, <count>), <SID>arg_index(<q-args>)+1)
 
 " Replace n'th argument with a given file
 command! -range=% -addr=arguments -nargs=1 -complete=file AReplace
-      \ call aplus#replace(<SID>arg_escape(<q-args>), <count>)
+      \ call aplus#replace(<SID>arg_escape(<q-args>), <SID>count(v:count, <count>))
 command! -range=% -addr=arguments -nargs=1 -complete=buffer AReplaceBuf
-      \ call aplus#replace(<SID>arg_escape(<q-args>), <count>)
+      \ call aplus#replace(<SID>arg_escape(<q-args>), <SID>count(v:count, <count>))
 
 command! -nargs=* -complete=file ADefine
       \ call aplus#define(<SID>arg_escape(<q-args>))
