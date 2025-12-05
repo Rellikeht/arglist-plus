@@ -96,7 +96,7 @@ function s:arg_index(name) abort
   return index(argv(), a:name)
 endfunction
 
-function s:save_pos() abort
+function s:save_file() abort
   let l:name = expand("%")
   let l:file = index(argv(), l:name)
   if l:file == -1
@@ -105,49 +105,60 @@ function s:save_pos() abort
   return l:name
 endfunction
 
-function s:restore_pos(saved) abort
+function s:restore_file(saved) abort
   if a:saved != ""
     let l:file = index(argv(), a:saved)
     call aplus#select(0, l:file + 1)
   endif
 endfunction
 
-" TODO do this without argdedupe command
-function s:dedupe() abort
-  call Dedupe()
+function s:save_paths() abort
+  try
+    let l:p1 = getcwd()
+    tcd -
+    let l:p2 = getcwd()
+    tcd -
+    return [l:p1, l:p2]
+  catch
+    return [getcwd(), ""]
+  endtry
 endfunction
 
-function Dedupe() abort
+function s:restore_paths(p1, p2) abort
+  if a:p2 != ""
+    execute "tcd ".a:p2
+  endif
+  execute "tcd ".a:p1
+endfunction
+
+function s:dedupe() abort
   let l:args = argv()
   let l:prev = {}
+  let l:pos = 0
   for arg in l:args
-    if get(l:prev, arg, 0) == 0
+    if get(l:prev, arg, -1) == -1
       let l:prev[arg] = 1
-      continue
+      let l:pos = l:pos + 1
+    else
+      call remove(l:args, l:pos)
     endif
-    call remove(l:args, arg)
   endfor
+  %argdel
+  exe "argadd ".join(l:args, " ")
 endfunction
 
 function s:argdedupe() abort
   " because argdedupe works relatively to current directory and if in 
   " other directory but on the same level there is a file with the same
   " as current file name it will be deduped
-  try
-    let l:p1 = execute("pwd")
-    tcd -
-    let l:p2 = execute("pwd")
-    tcd -
-    tcd /
-    call s:dedupe()
-    tcd -
-    execute "tcd ".l:p2
-    execute "tcd ".l:p1
-  catch
-    tcd /
-    call s:dedupe()
-    tcd -
-  endtry
+  let [l:p1, l:p2] = s:save_paths()
+  tcd /
+  call s:dedupe()
+  call s:restore_paths(l:p1, l:p2)
+endfunction
+
+function Dedupe() abort
+  call s:argdedupe()
 endfunction
 
 function s:count(motion_count, command_count) abort
@@ -306,9 +317,15 @@ endfunction
 function aplus#add(place, ...) abort
   " adds (only not already present) files to arglist
   let l:args = flatten(deepcopy(a:000))
+  let l:idx = argidx()
+  if argv()[l:idx] != expand("%")
+    let l:idx = -1
+  endif
   exe s:norm_place(a:place)."argadd ".join(l:args, " ")
-  " TODO eliminate argdedupe
   call s:argdedupe()
+  if l:idx > -1
+    call aplus#select(1, l:idx+1)
+  endif
 endfunction
 
 function aplus#edit(place, bang, ...) abort
@@ -342,22 +359,21 @@ endfunction
 function aplus#move(from, to) abort
   " moves element at a:from position to a:to position in list
   let [l:from, l:to] = [s:norm_apos(a:from), s:norm_apos(a:to)]
-  " echom l:from.." "..l:to
   if l:to == l:from
     return
   endif
-  let l:saved = s:save_pos()
+  let l:saved = s:save_file()
   let l:argv = s:escaped_args(argv())
   let l:arg = remove(l:argv, l:from)
   call insert(l:argv, l:arg, l:to)
   call aplus#define(l:argv)
-  call s:restore_pos(l:saved)
+  call s:restore_file(l:saved)
 endfunction
 
 function aplus#swap(from, to) abort
   " swaps element at a:from with file at a:to position in list
   let [l:from, l:to] = [s:norm_apos(a:from), s:norm_apos(a:to)]
-  let l:saved = s:save_pos()
+  let l:saved = s:save_file()
   let l:argv = s:escaped_args(argv())
   if l:from == l:to
     return
@@ -369,7 +385,7 @@ function aplus#swap(from, to) abort
   call insert(l:argv, l:f_to, l:from)
   call insert(l:argv, l:f_from, l:to)
   call aplus#define(l:argv)
-  call s:restore_pos(l:saved)
+  call s:restore_file(l:saved)
 endfunction
 
 function aplus#replace(file, idx=0) abort
