@@ -313,6 +313,8 @@ endfunction
 
 function aplus#add(place, fixpos, ...) abort
   " adds (only not already present) files to arglist
+  " (position of every file will be higher of what would be after
+  " `argadd` and it's current position if it is in arglist)"
   let l:args = flatten(deepcopy(a:000))
   if a:fixpos
     let l:cur_file = argv()[argidx()]
@@ -328,12 +330,22 @@ function aplus#add(place, fixpos, ...) abort
 endfunction
 
 function aplus#edit(place, bang, ...) abort
-  " adds (only not already present) files to arglist and edits first
-  " provided
+  " adds (only not already present) files to arglist (positions behave
+  " like in `aplus#add`) and edits first provided
   let l:args = flatten(deepcopy(a:000))
-  exe s:norm_place(a:place).s:cbang("argedit", a:bang)." ".join(l:args, " ")
-  " TODO eliminate argdedupe
+  silent exe s:norm_place(a:place).s:cbang("argedit", a:bang)." ".join(l:args, " ")
+  if argidx() >= argc()
+    let l:cur_file = ""
+  else
+    let l:cur_file = argv()[argidx()]
+    if l:cur_file != expand("%")
+      let l:cur_file = ""
+    endif
+  endif
   call s:argdedupe()
+  if l:cur_file != ""
+    call aplus#select(a:bang, index(argv(), l:cur_file)+1)
+  endif
 endfunction
 
 function aplus#delete(bang, ...) abort
