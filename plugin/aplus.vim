@@ -311,22 +311,25 @@ endfunction
 
 " operations on list elements {{{
 
-function aplus#add(place, ...) abort
+function aplus#add(place, fixpos, ...) abort
   " adds (only not already present) files to arglist
   let l:args = flatten(deepcopy(a:000))
-  let l:idx = argidx()
-  if l:idx >= argc() || argv()[l:idx] != expand("%")
-    let l:idx = -1
+  if a:fixpos
+    let l:cur_file = argv()[argidx()]
+    if l:cur_file != expand("%")
+      let l:cur_file = ""
+    endif
   endif
   exe s:norm_place(a:place)."argadd ".join(l:args, " ")
   call s:argdedupe()
-  if l:idx > -1
-    call aplus#select(1, l:idx+1)
+  if a:fixpos && l:cur_file != ""
+    call aplus#go(1, l:cur_file)
   endif
 endfunction
 
 function aplus#edit(place, bang, ...) abort
   " adds (only not already present) files to arglist and edits first
+  " provided
   let l:args = flatten(deepcopy(a:000))
   exe s:norm_place(a:place).s:cbang("argedit", a:bang)." ".join(l:args, " ")
   " TODO eliminate argdedupe
@@ -400,7 +403,7 @@ endfunction
 function aplus#define(...) abort
   " define list of currently used scope to be list given as parameter
   %argdel
-  call aplus#add(0, a:000)
+  call aplus#add(0, 0, a:000)
 endfunction
 
 function aplus#loc_to_glob() abort
@@ -463,9 +466,9 @@ command! -nargs=? -bang -complete=arglist AGo
 
 " Add file(s) to arglist
 command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
-      \ call aplus#add(<SID>count(v:count, <count>), <SID>arg_escape(<q-args>))
+      \ call aplus#add(<SID>count(v:count, <count>), 1, <SID>arg_escape(<q-args>))
 command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
-      \ call aplus#add(<SID>count(v:count, <count>), <SID>arg_escape(<q-args>))
+      \ call aplus#add(<SID>count(v:count, <count>), 1, <SID>arg_escape(<q-args>))
 
 " Add file(s) to arglist and edit (first)
 command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
