@@ -1,6 +1,3 @@
-" TODO replace argdedupe because it only works for duplicates next to
-" each other
-
 " helpers {{{
 
 function s:cbang(command, bang) abort
@@ -37,12 +34,12 @@ function s:instantiate(args) abort
 endfunction
 
 function s:set_if_not_exist(name, value) abort
-    if !exists(a:name)
-      exe "let ".a:name." = ".a:value
-    endif
+  if !exists(a:name)
+    exe "let ".a:name." = ".a:value
+  endif
 endfunction
 
-function s:expand_args_loop(cmd, list) abort
+function s:exec_expand_args(cmd, list) abort
   if len(a:list) == 0
     exe a:cmd." ".fnameescape(expand("%"))
     return
@@ -318,7 +315,7 @@ function aplus#add(place, ...) abort
   " adds (only not already present) files to arglist
   let l:args = flatten(deepcopy(a:000))
   let l:idx = argidx()
-  if argv()[l:idx] != expand("%")
+  if l:idx >= argc() || argv()[l:idx] != expand("%")
     let l:idx = -1
   endif
   exe s:norm_place(a:place)."argadd ".join(l:args, " ")
@@ -346,14 +343,14 @@ function aplus#delete_buf(bang, ...) abort
   " deletes argument from list and it's corresponding buffer
   let l:files = flatten(deepcopy(a:000))
   call aplus#delete(a:bang, l:files)
-  call s:expand_args_loop(s:cbang("bdelete", a:bang), l:files)
+  call s:exec_expand_args(s:cbang("bdelete", a:bang), l:files)
 endfunction
 
 function aplus#wipeout_buf(bang, ...) abort
   " deletes argument from list and wipes out it's corresponding buffer
   let l:files = flatten(deepcopy(a:000))
   call aplus#delete(a:bang, l:files)
-  call s:expand_args_loop(s:cbang("bwipeout", a:bang), l:files)
+  call s:exec_expand_args(s:cbang("bwipeout", a:bang), l:files)
 endfunction
 
 function aplus#move(from, to) abort
@@ -640,7 +637,7 @@ function s:buf_del_hook(file) abort
     catch
     endtry
   endif
-  let l:sid =  expand("<SID>")
+  let l:sid = expand("<SID>")
   call s:tabdo_stay(l:sid.."windo_stay", l:sid.."win_buf_del", a:file)
 endfunction
 
