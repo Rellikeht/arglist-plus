@@ -463,11 +463,10 @@ command! -nargs=0 -bang AVertList
 command! -nargs=0 -bang AHorizList
       \ call aplus#echo_output(<bang>0, "aplus#horiz_list")
 
-" TODO improve counts
 command! -count=1 -nargs=0 -bang ANext
-      \ call aplus#next(<bang>0, <count>)
+      \ call aplus#next(<bang>0, (v:count==0)?(<count>):(v:count1))
 command! -count=1 -nargs=0 -bang APrev
-      \ call aplus#prev(<bang>0, <count>)
+      \ call aplus#prev(<bang>0, (v:count==0)?(<count>):(v:count1))
 
 " Select n'th file
 command! -range=% -addr=arguments -bang ASelect
@@ -520,12 +519,11 @@ command! -range=% -addr=arguments AMoveCurN
 command! -range=% -addr=arguments ASwapWithN
       \ call aplus#swap(argidx()+1, <SID>count(v:count, <count>))
 
-" TODO check this
 " Move a file to position given in count
 command! -range=% -addr=arguments -nargs=1 -complete=arglist AMove
       \ call aplus#move(
       \ <SID>arg_index(<q-args>)+1,
-      \ (<count><=0)?argidx()+1:<count>
+      \ (<SID>count(v:count, <count>))
       \ )
 " Swap file with file at position given as count
 command! -range=% -addr=arguments -nargs=1 -complete=arglist ASwap
