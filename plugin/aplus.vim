@@ -154,10 +154,6 @@ function s:argdedupe() abort
   call s:restore_paths(l:p1, l:p2)
 endfunction
 
-function Dedupe() abort
-  call s:argdedupe()
-endfunction
-
 function s:count(motion_count, command_count) abort
   " Helper for counts in commands
   if a:motion_count != 0
@@ -171,6 +167,12 @@ function aplus#complete(lead, cmdline, cursorpos) abort
   let l:comps = deepcopy(getcompletion(a:lead, "arglist"))
   call map(l:comps, "fnameescape(v:val)")
   return l:comps
+endfunction
+
+function s:args_add(place, ...) abort
+  let l:args = flatten(deepcopy(a:000))
+  exe s:norm_place(a:place)."argadd ".join(l:args, " ")
+  call s:argdedupe()
 endfunction
 
 " }}}
@@ -198,17 +200,6 @@ call s:set_if_not_exist("g:aplus#new_copy", 0)
 " }}}
 
 " functions {{{
-
-" operation helpers {{{
-
-function s:add(place, name) abort
-  let l:idx = index(argv(), a:name)
-  if l:idx == -1
-    exe s:norm_place(a:place)."argadd ".a:name
-  endif
-endfunction
-
-" }}}
 
 " information {{{
 
@@ -311,20 +302,16 @@ endfunction
 
 " operations on list elements {{{
 
-function aplus#add(place, fixpos, ...) abort
+function aplus#add(place, ...) abort
   " adds (only not already present) files to arglist
   " (position of every file will be higher of what would be after
   " `argadd` and it's current position if it is in arglist)"
-  let l:args = flatten(deepcopy(a:000))
-  if a:fixpos
-    let l:cur_file = argv()[argidx()]
-    if l:cur_file != expand("%")
-      let l:cur_file = ""
-    endif
+  let l:cur_file = argv()[argidx()]
+  if l:cur_file != expand("%")
+    let l:cur_file = ""
   endif
-  exe s:norm_place(a:place)."argadd ".join(l:args, " ")
-  call s:argdedupe()
-  if a:fixpos && l:cur_file != ""
+  call s:args_add(a:place, a:000)
+  if l:cur_file != ""
     call aplus#go(1, l:cur_file)
   endif
 endfunction
@@ -415,7 +402,7 @@ endfunction
 function aplus#define(...) abort
   " define list of currently used scope to be list given as parameter
   %argdel
-  call aplus#add(0, 0, a:000)
+  call s:args_add(0, a:000)
 endfunction
 
 function aplus#loc_to_glob() abort
@@ -477,9 +464,9 @@ command! -nargs=? -bang -complete=arglist AGo
 
 " Add file(s) to arglist
 command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
-      \ call aplus#add(<SID>count(v:count, <count>), 1, <SID>arg_escape(<q-args>))
+      \ call aplus#add(<SID>count(v:count, <count>), <SID>arg_escape(<q-args>))
 command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
-      \ call aplus#add(<SID>count(v:count, <count>), 1, <SID>arg_escape(<q-args>))
+      \ call aplus#add(<SID>count(v:count, <count>), <SID>arg_escape(<q-args>))
 
 " Add file(s) to arglist and edit (first)
 command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
