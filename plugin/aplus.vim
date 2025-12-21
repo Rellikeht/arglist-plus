@@ -141,7 +141,7 @@ function s:dedupe() abort
     endif
   endfor
   %argdel
-  exe "argadd ".join(l:args, " ")
+  exe "argadd ".join(map(l:args, "fnameescape(v:val)"), " ")
 endfunction
 
 function s:argdedupe() abort
