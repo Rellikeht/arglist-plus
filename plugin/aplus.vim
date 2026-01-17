@@ -78,7 +78,6 @@ endfunction
 
 function s:norm_place(place) abort
   let l:place = a:place
-  let l:place = a:place
   if l:place == -1
     if argidx() == -1
       let l:place = "$"
@@ -137,11 +136,9 @@ function s:dedupe() abort
       let l:prev[arg] = 1
       let l:pos = l:pos + 1
     else
-      call remove(l:args, l:pos)
+      execute (l:pos + 1)."argdelete"
     endif
   endfor
-  %argdel
-  exe "argadd ".join(map(l:args, "fnameescape(v:val)"), " ")
 endfunction
 
 function s:argdedupe() abort
@@ -289,7 +286,7 @@ function aplus#go(bang, name="") abort
   else
     " avoid duplication of entries
     " argdedupe isn't good enough
-    let l:idx = index(argv(), a:name)
+    let l:idx = index(argv(), fnameescape(expand(a:name)))
     if l:idx == -1
       exe s:cbang("argedit", a:bang)." ".a:name
     else
@@ -306,14 +303,7 @@ function aplus#add(place, ...) abort
   " adds (only not already present) files to arglist
   " (position of every file will be higher of what would be after
   " `argadd` and it's current position if it is in arglist)"
-  let l:cur_file = argv()[argidx()]
-  if l:cur_file != expand("%")
-    let l:cur_file = ""
-  endif
   call s:args_add(a:place, a:000)
-  if l:cur_file != ""
-    call aplus#go(1, l:cur_file)
-  endif
 endfunction
 
 function aplus#edit(place, bang, ...) abort
@@ -331,7 +321,12 @@ function aplus#edit(place, bang, ...) abort
   endif
   call s:argdedupe()
   if l:cur_file != ""
-    call aplus#select(a:bang, index(argv(), l:cur_file)+1)
+    " TODO does this work
+    let l:bang = a:bang
+    if &hidden
+      let l:bang = 1
+    endif
+    call aplus#select(l:bang, index(argv(), l:cur_file)+1)
   endif
 endfunction
 
