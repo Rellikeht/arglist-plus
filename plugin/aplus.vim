@@ -623,11 +623,18 @@ function s:buf_del_hook(file) abort
     return
   endif
   if s:check_var("aplus#buf_del_global", ["g"])
+    let l:argv = s:escaped_args(argv())
+    let l:aid = arglistid()
+    argglobal
     try
-      let l:argv = s:escaped_args(argv())
-      argglobal
       exe "argdelete ".fnameescape(a:file)
-      call aplus#define(l:argv)
+    catch
+    endtry
+    if l:aid > 0
+      arglocal
+    endif
+    call aplus#define(l:argv)
+    try
       exe "argdelete ".fnameescape(a:file)
     catch
     endtry
