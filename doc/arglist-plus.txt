@@ -39,62 +39,55 @@ Navigation ~
 
 :[count]ANext
 
-    command! -count=1 -nargs=0 -bang ANext
-          \ call aplus#next(<bang>0, <count>)
+    Select [count]th next argument from current list (wraps around).
 
 :[count]APrev[!]
 
-    command! -count=1 -nargs=0 -bang APrev
-          \ call aplus#prev(<bang>0, <count>)
+    Select [count]th next argument from current list (wraps around).
 
-:[range]ASelect[!] [number]             Select n'th file
+:[range]ASelect[!]
 
-    command! -range=% -addr=arguments -nargs=? -bang ASelect
-          \ call aplus#select(<bang>0, len("<args>")?0<args>:<count>)
+    Select n'th file from current list.
+    If v:count is not 0 [range] is used.
 
-:AGo[!] [name]                          Go to file by name
+:AGo[!] [file]
 
-    command! -nargs=? -bang -complete=arglist AGo
-          \ call aplus#go(<bang>0, <q-args>)
+    Go to [file] (completed from current arglist). If provided file isn't in 
+    arglist it is added like in |:AEdit|.
 
 Adding to arglist ~
 
-:[range]AAdd file [...]                 Add file(s) to arglist
+:[range]AAdd file [...]                                     *:AAdd*
 
-    command! -range=% -addr=arguments -nargs=+ -complete=file AAdd
-          \ call aplus#add(<count>, <SID>cescape(<q-args>))
+    Add file(s) to arglist at position |v:count| or [range] if given.
 
-:[range]AAddBuf buffer [...]            Add file(s) to arglist
+:[range]AAddBuf buffer [...]                                *:AAddBuf*
 
-    command! -range=% -addr=arguments -nargs=+ -complete=buffer AAddBuf
-          \ call aplus#add(<count>, <SID>cescape(<q-args>))
+    Similar to |:AAdd| but files are completed from buffer list.
+    |cmdline-special| characters are treated literally in this command.
 
-:[range]AEdit[!] file [...]             Add file(s) to arglist and edit (first)
+:[range]AEdit[!] file [...]                                 *:AEdit*
 
-    command! -range=% -addr=arguments -nargs=+ -bang -complete=file AEdit
-          \ call aplus#edit(<count>, <bang>0, <SID>cescape(<q-args>))
+    Add file(s) to arglist and edit (first)
 
-:[range]AEditBuf[!] buffer [...]        Add file(s) to arglist and edit (first)
+:[range]AEditBuf[!] buffer [...]                            *:AEditBuf*
 
-    command! -range=% -addr=arguments -nargs=+ -bang -complete=buffer AEditBuf
-          \ call aplus#edit(<count>, <bang>0, <SID>cescape(<q-args>))
+    Add file(s) to arglist and edit (first)
 
 Removing from arglist ~
 
-:ADel[!] [args...]                      Remove file from arglist
+:ADel[!] [file...]                                          *:ADel*
 
-    command! -nargs=* -bang -complete=customlist,aplus#complete ADel
-          \ call aplus#delete(<bang>0, <q-args>)
+    Remove [file...] from arglist. If no argument is given remove currently 
+    opened file (if it is in list).
 
-:ABufDel[!] [args...]                   Remove file from arglist and delete it's buffer
+:ABufDel[!] [args...]                                       *:ABufDel*
 
-    command! -nargs=* -bang -complete=customlist,aplus#complete ABufDel
-          \ call aplus#delete_buf(<bang>0, <q-args>)
+    Like |:ADel| but also |:bdelete| selected elements.
 
-:ABufWipe[!] [args...]                  Remove file from arglist and wipe out it's buffer
+:ABufWipe[!] [args...]                                      *:AbufWipe*
 
-    command! -nargs=* -bang -complete=customlist,aplus#complete ABufWipe
-          \ call aplus#wipeout_buf(<bang>0, <q-args>)
+    Like |:ADel| but also |:bwipeout| selected elements.
 
 Versions that argedit next free after deleting:
 
