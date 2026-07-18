@@ -35,6 +35,11 @@ Bang in following commands makes them use |:echomsg| instead of |:echo|.
     command! -nargs=0 -bang AHorizList
           \ call aplus#echo_output(<bang>0, "aplus#horiz_list")
 
+:ANumList[!]
+
+    command! -nargs=0 -bang ANumList
+          \ call aplus#echo_output(<bang>0, "aplus#num_list")
+
 Navigation ~
 
 :[count]ANext

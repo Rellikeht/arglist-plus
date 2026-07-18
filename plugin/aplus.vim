@@ -209,6 +209,19 @@ function aplus#arg_name() abort
   return l:argv[argidx()]
 endfunction
 
+function aplus#horiz_list() abort
+  " returns arglist representation with all elements next to
+  " each other (and escaped)
+  let l:argv = s:escaped_args(argv())
+  if len(l:argv) == 0
+    return ""
+  endif
+  if argidx() >= 0 && argidx() < argc()
+    let l:argv[argidx()] = "[".l:argv[argidx()]."]"
+  endif
+  return join(l:argv, "  ")
+endfunction
+
 function aplus#vert_list() abort
   " returns arglist representation with each argument on separate line
   let l:argv = argv()
@@ -221,17 +234,18 @@ function aplus#vert_list() abort
   return join(l:argv, "\n")
 endfunction
 
-function aplus#horiz_list() abort
-  " returns arglist representation with all elements next to
-  " each other (and escaped)
-  let l:argv = s:escaped_args(argv())
+function aplus#num_list() abort
+  " returns arglist representation with each argument on separate line
+  " and with respective number
+  let l:argv = argv()
   if len(l:argv) == 0
     return ""
   endif
   if argidx() >= 0 && argidx() < argc()
-    let l:argv[argidx()] = "[".l:argv[argidx()]."]"
+    let l:argv[argidx()] = "[ ".l:argv[argidx()]." ]"
   endif
-  return join(l:argv, "  ")
+  let l:argv = map(l:argv, "v:key.' '.v:val")
+  return join(l:argv, "\n")
 endfunction
 
 function aplus#list() abort
@@ -444,6 +458,8 @@ command! -nargs=0 -bang AVertList
       \ call aplus#echo_output(<bang>0, "aplus#vert_list")
 command! -nargs=0 -bang AHorizList
       \ call aplus#echo_output(<bang>0, "aplus#horiz_list")
+command! -nargs=0 -bang ANumList
+      \ call aplus#echo_output(<bang>0, "aplus#num_list")
 
 command! -count=1 -nargs=0 -bang ANext
       \ call aplus#next(<bang>0, (v:count==0)?(<count>):(v:count1))
@@ -545,6 +561,7 @@ map <Plug>AName :<C-u>AName<CR>
 map <Plug>AList :<C-u>AList<CR>
 map <Plug>AVertList :<C-u>AVertList<CR>
 map <Plug>AHorizList :<C-u>AHorizList<CR>
+map <Plug>ANumList :<C-u>AHorizList<CR>
 
 map <Plug>ANext :ANext<CR>
 map <Plug>APrev :APrev<CR>
