@@ -172,6 +172,13 @@ function s:args_add(place, ...) abort
   call s:argdedupe()
 endfunction
 
+function s:get_cmd_args(cmd) abort
+  " Returns output of `cmd` command parsed as list of files
+  let l:result = split(system(a:cmd), "\n")
+  let l:result = map(l:result, "fnameescape(v:val)")
+  return l:result
+endfunction
+
 " }}}
 
 " settings {{{
@@ -539,6 +546,14 @@ command! -nargs=* -complete=buffer ADefineBuf
       \ call aplus#define(<SID>arg_escape(<q-args>))
 command! -nargs=* -complete=customlist,aplus#complete ADefineArgs
       \ call aplus#define(<SID>arg_escape(<q-args>))
+
+if v:version >= 900 || has("nvim-0.11")
+  command! -nargs=* -complete=shellcmdline ADefineSys
+        \ call aplus#define(<SID>get_cmd_args(<q-args>))
+else
+  command! -nargs=* -complete=shellcmd ADefineSys
+        \ call aplus#define(<SID>get_cmd_args(<q-args>))
+endif
 
 command! -nargs=* -bang -complete=file ADefineGo
       \ call aplus#define(<q-args>)|call aplus#select(<bang>0)

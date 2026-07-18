@@ -177,6 +177,11 @@ Defining arglist ~
     command! -nargs=* -complete=customlist,aplus#complete ADefineArgs
           \ call aplus#define(<SID>cescape(<q-args>))
 
+:ADefineSys [files...]
+
+    command! -nargs=* -complete=shellcmdline ADefineSys
+          \ call aplus#define(<SID>get_cmd_args(<q-args>))
+
 :ADefineGo[!] [files...]
 
     command! -nargs=* -bang -complete=file ADefineGo
